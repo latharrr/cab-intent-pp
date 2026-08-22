@@ -805,7 +805,14 @@
       timeOnPageSec: Math.round((Date.now() - pageLoadTime) / 1000)
     }, collectAnswers()), baseMeta()));
   }
-  document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'hidden') sendExit(); });
+  // A tab going hidden isn't necessarily a real departure (switching apps to grab
+  // an OTP, a lock screen, etc.) -- reset the latch on return so a later, genuine
+  // exit (with more of the form filled in) still gets sent instead of being
+  // silently swallowed by an earlier, low-signal hidden event.
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState === 'hidden') sendExit();
+    else if(document.visibilityState === 'visible') exitSent = false;
+  });
   window.addEventListener('pagehide', sendExit);
 
   // ---- auto-advance: answering a question scrolls to the next one ----
