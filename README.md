@@ -41,12 +41,23 @@ No server, no API keys, no cost.
    Who has access: **Anyone** (must be "Anyone", not "Anyone with a
    Google account" - the form's visitors aren't logged into Google).
    Click Deploy and copy the `.../exec` URL it gives you.
-5. In `index.html`, find `CONFIG.APPS_SCRIPT_URL` near the top of the
-   `<script>` block and paste that URL in. Redeploy the site.
+5. In `api/track.js`, find `APPS_SCRIPT_URL` near the top and paste that
+   URL in. Redeploy the site.
 
 That's it - submissions and page-view events now land in the Sheet in
 real time. Re-run `setupDashboard` any time from the Sheet's new
 **PicaPool** menu if you want to rebuild the Dashboard tab from scratch.
+
+The browser never talks to `script.google.com` directly - it POSTs to
+`/api/track` (same origin as the site), and that Vercel serverless
+function relays to Apps Script server-side. This matters because privacy
+blocklists (Brave Shields, uBlock Origin, Safari's tracking protection)
+commonly block `script.google.com/macros/*` outright, since a Google Apps
+Script Web App used as a client-side analytics beacon is a known
+ad-blocker-evasion pattern - with a direct call, those visitors' data
+silently never arrives even though the form's success screen still shows
+(analytics failures never block the form). Routing through your own
+domain sidesteps that.
 
 **What's in the Sheet:**
 

@@ -682,11 +682,15 @@
   }
 
   // ============ ANALYTICS - logs to a Google Sheet via Apps Script ============
-  // 1. Deploy the Apps Script in google-apps-script.gs as a Web App (see README).
-  // 2. Paste the deployed /exec URL below. Until this is a real URL, tracking is a silent no-op.
-  var CONFIG = {
-    APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbyT7erIbgapCQ7Emem0VtR-RIrKD99-LQy5bkqqmmY32HDQyYOM_SwlLT09lHBt23PE/exec'
-  };
+  // Posts go to /api/track (same origin as this page) instead of straight to
+  // script.google.com - the Apps Script /exec URL now lives server-side in
+  // api/track.js, which relays to it. Calling script.google.com directly from
+  // the browser gets silently dropped by Brave Shields/uBlock/Safari ITP and
+  // similar privacy blocklists, which specifically target Apps Script Web App
+  // URLs as a known analytics-beacon pattern - the form's success screen still
+  // shows either way since analytics must never block/break the form, so that
+  // failure mode is invisible unless you check the Sheet.
+  var TRACK_URL = '/api/track';
 
   var pageLoadTime = Date.now();
   var geo = {};
@@ -774,12 +778,11 @@
 
   function post(payload){
     try{
-      if(!CONFIG.APPS_SCRIPT_URL || CONFIG.APPS_SCRIPT_URL.indexOf('PASTE_') === 0) return;
       var body = JSON.stringify(payload);
       if(navigator.sendBeacon){
-        navigator.sendBeacon(CONFIG.APPS_SCRIPT_URL, new Blob([body], { type: 'text/plain;charset=UTF-8' }));
+        navigator.sendBeacon(TRACK_URL, new Blob([body], { type: 'text/plain;charset=UTF-8' }));
       } else if(window.fetch){
-        fetch(CONFIG.APPS_SCRIPT_URL, { method: 'POST', mode: 'no-cors', keepalive: true, headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: body });
+        fetch(TRACK_URL, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: body });
       }
     }catch(err){ /* analytics must never break the form */ }
   }
