@@ -1,0 +1,701 @@
+<title>Picapool Route Match</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+
+<style>
+  /* ============ TOKENS — Picapool, single committed light theme (matches app) ============ */
+  :root{
+    --brand:#F03506;
+    --brand-light:#FF7537;
+    --brand-deep:#C22703;
+    --brand-wash:#FFF7F3;
+    --brand-soft:#FFE5DA;
+    --brand-mid:#FFA67E;
+
+    --ink:#17140F;
+    --ink-2:#1C1C1E;
+    --paper:#FFFFFF;
+    --surface:#F8F8F8;
+    --surface-dim:#F2F0EE;
+    --line:#EBEBEB;
+    --line-strong:#D2D2D2;
+
+    --text-secondary:#6C6560;
+    --text-muted:#8E8B87;
+    --text-on-brand:#FFF2EC;
+
+    --err:#C22703;
+    --ok:#1E8A4C;
+
+    --page-bg:#F4EFEA;
+
+    --r-xs:8px;
+    --r-sm:12px;
+    --r-md:18px;
+    --r-lg:24px;
+    --r-xl:34px;
+    --r-pill:999px;
+
+    --shadow-card: 0 1px 2px rgba(23,20,15,0.04), 0 18px 40px -22px rgba(23,20,15,0.28);
+    --shadow-float: 0 6px 16px -6px rgba(0,0,0,0.16);
+    --shadow-focus: 0 4px 22px -4px rgba(240,53,6,0.28);
+
+    --font-display:'Inter',-apple-system,'SF Pro Display',system-ui,sans-serif;
+    --font-body:'Inter',-apple-system,'SF Pro Text',system-ui,sans-serif;
+    --font-mono:'IBM Plex Mono','SF Mono',ui-monospace,monospace;
+
+    color-scheme: light;
+  }
+
+  *,*::before,*::after{ box-sizing:border-box; }
+  html{ -webkit-text-size-adjust:100%; }
+  body{
+    margin:0;
+    background:var(--page-bg);
+    background-image:
+      radial-gradient(60rem 40rem at 12% -10%, #FBEAE0 0%, transparent 55%),
+      radial-gradient(50rem 36rem at 110% 10%, #FCEEE6 0%, transparent 50%);
+    color:var(--ink);
+    font-family:var(--font-body);
+    -webkit-font-smoothing:antialiased;
+    display:flex;
+    justify-content:center;
+    padding:clamp(0px, 4vw, 56px) 0 0;
+  }
+
+  ::selection{ background:var(--brand-soft); color:var(--brand-deep); }
+
+  h1,h2,h3,p,figure{ margin:0; }
+  button{ font-family:inherit; }
+  input, select, textarea{ font-family:inherit; }
+
+  a.skiplink{ position:absolute; left:-999px; }
+  a.skiplink:focus{ left:8px; top:8px; background:#000; color:#fff; padding:8px 12px; border-radius:8px; z-index:100; }
+
+  :focus-visible{ outline:2px solid var(--brand); outline-offset:2px; border-radius:6px; }
+
+  /* ============ SHELL — the page reads as one continuous "device card" ============ */
+  .shell{
+    width:100%;
+    max-width:488px;
+    min-height:100dvh;
+    background:var(--paper);
+    border-radius:var(--r-xl) var(--r-xl) 0 0;
+    box-shadow:var(--shadow-card);
+    overflow:hidden;
+    position:relative;
+    display:flex;
+    flex-direction:column;
+  }
+  @media (min-width:560px){
+    body{ padding-top:40px; }
+    .shell{ border-radius:var(--r-xl); min-height:auto; margin-bottom:40px; }
+  }
+
+  /* progress rail */
+  .progress-rail{
+    position:sticky; top:0; z-index:40;
+    height:4px; background:var(--brand-soft);
+  }
+  .progress-fill{
+    height:100%; width:6%;
+    background:linear-gradient(90deg, var(--brand-light), var(--brand));
+    transition:width .5s cubic-bezier(.22,.8,.28,1);
+  }
+
+  section{ padding: 40px 24px; }
+  section + section{ border-top:1px solid var(--line); }
+
+  /* ============ HERO ============ */
+  .hero{
+    position:relative;
+    padding:52px 24px 44px;
+    background:
+      radial-gradient(120% 90% at 8% 0%, rgba(255,255,255,0.16), transparent 55%),
+      linear-gradient(155deg, var(--brand-light) 0%, var(--brand) 62%, var(--brand-deep) 100%);
+    color:#fff;
+    overflow:hidden;
+    border-top:none;
+  }
+  .hero::after{
+    content:"";
+    position:absolute; inset:auto -30% -55% auto;
+    width:70%; aspect-ratio:1;
+    border-radius:50%;
+    background:radial-gradient(circle, rgba(255,255,255,0.14), transparent 70%);
+    pointer-events:none;
+  }
+  .brandmark{ display:flex; align-items:center; gap:10px; margin-bottom:34px; }
+  .brandmark svg{ display:block; }
+  .brandmark span{
+    font-weight:800; font-size:20px; letter-spacing:-0.02em; color:#fff;
+  }
+
+  .hero-eyebrow{
+    display:inline-flex; align-items:center; gap:6px;
+    font-family:var(--font-mono); font-size:11px; font-weight:600;
+    letter-spacing:0.06em; text-transform:uppercase;
+    color:var(--text-on-brand);
+    background:rgba(255,255,255,0.16);
+    border:1px solid rgba(255,255,255,0.28);
+    padding:6px 10px; border-radius:var(--r-pill);
+    margin-bottom:18px;
+  }
+  .hero-eyebrow .dot{ width:6px; height:6px; border-radius:50%; background:#fff; }
+
+  .hero h1{
+    font-size:clamp(28px,7vw,34px);
+    line-height:1.14;
+    font-weight:800;
+    letter-spacing:-0.025em;
+    text-wrap:balance;
+    max-width:16ch;
+  }
+  .hero h1 em{ font-style:normal; opacity:0.78; font-weight:600; }
+
+  .stat-row{
+    display:flex; align-items:flex-end; gap:14px;
+    margin-top:30px; padding-top:26px;
+    border-top:1px solid rgba(255,255,255,0.22);
+  }
+  .stat-num{
+    font-size:clamp(44px,13vw,58px);
+    font-weight:900; line-height:0.9; letter-spacing:-0.03em;
+    font-variant-numeric:tabular-nums;
+  }
+  .stat-cap{
+    font-size:13.5px; line-height:1.35; font-weight:500;
+    color:var(--text-on-brand); opacity:0.92;
+    padding-bottom:6px; max-width:19ch;
+  }
+
+  .proof-row{
+    display:flex; flex-wrap:wrap; gap:8px;
+    margin-top:22px;
+  }
+  .proof-pill{
+    display:inline-flex; align-items:center; gap:6px;
+    background:rgba(255,255,255,0.14);
+    border:1px solid rgba(255,255,255,0.26);
+    color:#fff; font-size:12.5px; font-weight:600;
+    padding:8px 12px 8px 10px; border-radius:var(--r-pill);
+  }
+  .proof-pill svg{ flex:none; }
+
+  /* ============ TRANSITION / PITCH ============ */
+  .pitch{ background:var(--paper); }
+  .pitch .kicker{
+    font-family:var(--font-mono); font-size:11px; font-weight:600;
+    letter-spacing:0.08em; text-transform:uppercase; color:var(--brand);
+    margin-bottom:12px; display:block;
+  }
+  .pitch blockquote{
+    font-size:19px; line-height:1.5; font-weight:600;
+    letter-spacing:-0.01em; color:var(--ink);
+    margin:0 0 16px;
+    text-wrap:balance;
+  }
+  .pitch blockquote span.hi{ color:var(--brand); }
+  .pitch p.sub{
+    font-size:14.5px; line-height:1.6; color:var(--text-secondary);
+    max-width:44ch;
+  }
+  .pitch .arrow-cue{
+    margin-top:26px; display:flex; align-items:center; gap:8px;
+    font-size:13px; font-weight:600; color:var(--ink);
+  }
+  .pitch .arrow-cue svg{ animation:nudge 1.8s ease-in-out infinite; }
+  @keyframes nudge{ 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(4px);} }
+  @media (prefers-reduced-motion: reduce){ .pitch .arrow-cue svg{ animation:none; } }
+
+  /* ============ FORM CHROME ============ */
+  .q{ scroll-margin-top:24px; }
+  .q-head{ margin-bottom:16px; }
+  .q-index{
+    font-family:var(--font-mono); font-size:11.5px; font-weight:600;
+    color:var(--text-muted); letter-spacing:0.02em; margin-bottom:6px; display:block;
+  }
+  .q-title{
+    font-size:17.5px; font-weight:700; letter-spacing:-0.015em; color:var(--ink);
+    line-height:1.35;
+  }
+  .q-hint{ font-size:13px; color:var(--text-secondary); margin-top:5px; line-height:1.5; }
+
+  /* chip select (single/multi row) — matches extracted 'Filters' chip */
+  .chip-grid{ display:flex; flex-wrap:wrap; gap:8px; }
+  .chip{
+    appearance:none; border:1px solid transparent; cursor:pointer;
+    background:var(--surface); color:var(--ink);
+    font-size:14px; font-weight:600;
+    padding:11px 16px; border-radius:var(--r-xs);
+    transition:background .15s ease, color .15s ease, transform .1s ease, box-shadow .15s ease;
+    display:inline-flex; align-items:center; gap:7px;
+  }
+  .chip:hover{ background:#F0EEEC; }
+  .chip:active{ transform:scale(0.97); }
+  .chip[aria-pressed="true"]{
+    background:var(--brand); color:#fff;
+    box-shadow:var(--shadow-focus);
+  }
+  .chip svg{ flex:none; opacity:0.85; }
+  .chip[aria-pressed="true"] svg{ opacity:1; }
+
+  /* option row (radio-style) — matches extracted bullet-category rows */
+  .opt-list{ display:flex; flex-direction:column; gap:8px; }
+  .opt-row{
+    appearance:none; width:100%; text-align:left; cursor:pointer;
+    display:flex; align-items:center; gap:12px;
+    background:var(--surface); border:1px solid var(--line-strong);
+    border-radius:var(--r-sm); padding:13px 14px;
+    font-size:14.5px; font-weight:500; color:var(--ink);
+    transition:border-color .15s ease, background .15s ease, box-shadow .15s ease;
+  }
+  .opt-row:hover{ border-color:#C7C4C1; }
+  .opt-bullet{
+    flex:none; width:19px; height:19px; border-radius:50%;
+    border:1.6px solid var(--line-strong); background:#fff;
+    display:flex; align-items:center; justify-content:center;
+    transition:border-color .15s ease;
+  }
+  .opt-bullet::after{
+    content:""; width:9px; height:9px; border-radius:50%;
+    background:var(--brand); transform:scale(0);
+    transition:transform .15s cubic-bezier(.34,1.56,.64,1);
+  }
+  .opt-row[aria-pressed="true"]{
+    background:#fff; border-color:var(--line); box-shadow:var(--shadow-focus);
+  }
+  .opt-row[aria-pressed="true"] .opt-bullet{ border-color:var(--brand); }
+  .opt-row[aria-pressed="true"] .opt-bullet::after{ transform:scale(1); }
+  .opt-row[aria-pressed="true"] .opt-label{ color:var(--brand); font-weight:600; }
+  .opt-meta{ margin-left:auto; font-family:var(--font-mono); font-size:12px; color:var(--text-muted); }
+
+  /* text field — matches extracted input component */
+  .field{ display:flex; flex-direction:column; gap:7px; }
+  .field label{ font-size:12.5px; font-weight:600; color:var(--text-secondary); letter-spacing:0.01em; }
+  .field .input-wrap{ position:relative; }
+  .field input{
+    width:100%; background:var(--surface); border:1px solid var(--line);
+    border-radius:var(--r-sm); padding:14px 14px;
+    font-size:15px; color:var(--ink); font-weight:500;
+    transition:border-color .15s ease, background .15s ease, box-shadow .15s ease;
+  }
+  .field input.with-prefix{ padding-left:52px; }
+  .field .prefix{
+    position:absolute; left:14px; top:50%; transform:translateY(-50%);
+    font-size:15px; font-weight:600; color:var(--text-secondary);
+    font-family:var(--font-mono);
+  }
+  .field input::placeholder{ color:var(--text-muted); font-weight:400; }
+  .field input:focus{ outline:none; background:#fff; border-color:var(--brand-mid); box-shadow:var(--shadow-focus); }
+  .field input.invalid{ border-color:var(--err); }
+  .field .err-msg{ font-size:12.5px; color:var(--err); min-height:1px; display:none; }
+  .field.has-error .err-msg{ display:block; }
+  .field.has-error input{ border-color:var(--err); }
+
+  .field-grid{ display:flex; flex-direction:column; gap:16px; }
+
+  /* mood cards for Q6 */
+  .mood-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .mood-card{
+    appearance:none; cursor:pointer; text-align:center;
+    background:var(--surface); border:1px solid var(--line-strong);
+    border-radius:var(--r-sm); padding:14px 6px 12px;
+    display:flex; flex-direction:column; align-items:center; gap:8px;
+    transition:border-color .15s ease, background .15s ease, box-shadow .15s ease, transform .1s ease;
+  }
+  .mood-card:active{ transform:scale(0.96); }
+  .mood-card svg{ transition:transform .15s ease; }
+  .mood-card[aria-pressed="true"]{ background:#fff; border-color:var(--brand-mid); box-shadow:var(--shadow-focus); }
+  .mood-card[aria-pressed="true"] svg{ transform:translateY(-1px); }
+  .mood-card[aria-pressed="true"] .mood-label{ color:var(--brand); font-weight:700; }
+  .mood-label{ font-size:11.5px; font-weight:600; color:var(--text-secondary); line-height:1.2; }
+
+  /* section number badge */
+  .step-badge{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:26px; height:26px; border-radius:50%;
+    background:var(--ink); color:#fff;
+    font-family:var(--font-mono); font-size:12px; font-weight:600;
+    margin-right:9px; flex:none;
+  }
+
+  /* submit */
+  .submit-sec{ background:var(--surface-dim); }
+  .cta-btn{
+    appearance:none; width:100%; border:none; cursor:pointer;
+    background:var(--ink); color:#fff;
+    font-size:16px; font-weight:700; letter-spacing:-0.01em;
+    padding:17px 20px; border-radius:var(--r-pill);
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    box-shadow:var(--shadow-float);
+    transition:transform .12s ease, background .15s ease;
+  }
+  .cta-btn:hover{ background:#000; }
+  .cta-btn:active{ transform:scale(0.98); }
+  .cta-btn:disabled{ opacity:0.45; cursor:not-allowed; }
+  .cta-btn svg{ transition:transform .15s ease; }
+  .cta-btn:hover svg{ transform:translateX(3px); }
+
+  .privacy-note{
+    display:flex; align-items:flex-start; gap:8px;
+    margin-top:14px; font-size:12px; line-height:1.55; color:var(--text-muted);
+  }
+  .privacy-note svg{ flex:none; margin-top:2px; }
+
+  /* success state */
+  .success{
+    display:none; flex-direction:column; align-items:center; text-align:center;
+    padding:64px 28px 56px; background:var(--paper);
+  }
+  .success.is-visible{ display:flex; }
+  .success-ring{
+    width:64px; height:64px; border-radius:50%;
+    background:var(--brand-wash); border:1px solid var(--brand-soft);
+    display:flex; align-items:center; justify-content:center;
+    margin-bottom:22px;
+  }
+  .success h2{ font-size:21px; font-weight:800; letter-spacing:-0.015em; margin-bottom:10px; }
+  .success p{ font-size:14.5px; color:var(--text-secondary); line-height:1.6; max-width:32ch; }
+  .success .ticket{
+    margin-top:26px; width:100%; background:var(--surface); border:1px dashed var(--line-strong);
+    border-radius:var(--r-sm); padding:16px; text-align:left;
+  }
+  .success .ticket-row{ display:flex; justify-content:space-between; font-size:13px; padding:5px 0; }
+  .success .ticket-row span:first-child{ color:var(--text-muted); }
+  .success .ticket-row span:last-child{ font-family:var(--font-mono); font-weight:600; color:var(--ink); }
+
+  footer.legal{
+    padding:22px 24px 34px; background:var(--surface-dim);
+    font-size:11.5px; color:var(--text-muted); text-align:center; line-height:1.6;
+  }
+
+  .visually-hidden{
+    position:absolute !important; width:1px; height:1px; overflow:hidden;
+    clip:rect(0,0,0,0); white-space:nowrap; border:0; padding:0; margin:-1px;
+  }
+
+  .reveal{ opacity:0; transform:translateY(14px); transition:opacity .5s ease, transform .5s ease; }
+  .reveal.is-in{ opacity:1; transform:none; }
+  @media (prefers-reduced-motion: reduce){
+    .reveal{ opacity:1; transform:none; transition:none; }
+  }
+</style>
+
+<a class="skiplink" href="#q1">Skip to form</a>
+
+<main class="shell" id="top">
+  <div class="progress-rail" aria-hidden="true"><div class="progress-fill" id="progressFill"></div></div>
+
+  <!-- ================= HERO : what Picapool does ================= -->
+  <section class="hero">
+    <div class="brandmark">
+      <svg width="30" height="30" viewBox="0 0 30 30" fill="none" aria-hidden="true">
+        <rect x="1" y="7" width="16" height="16" rx="6" fill="#fff" fill-opacity="0.92"/>
+        <rect x="13" y="1" width="16" height="16" rx="6" fill="#fff" fill-opacity="0.55"/>
+      </svg>
+      <span>Picapool</span>
+    </div>
+
+    <span class="hero-eyebrow"><span class="dot"></span>Delhi's college ride network</span>
+
+    <h1>Every ride here starts with someone <em>you'd actually trust.</em></h1>
+
+    <div class="stat-row">
+      <span class="stat-num">5,000+</span>
+      <span class="stat-cap">verified students already riding across Delhi colleges</span>
+    </div>
+
+    <div class="proof-row">
+      <span class="proof-pill">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 12l5 5L20 6" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Same college, real people
+      </span>
+      <span class="proof-pill">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" stroke="#fff" stroke-width="2" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        DigiLocker verified
+      </span>
+    </div>
+  </section>
+
+  <!-- ================= TRANSITION : the pain, the pivot to cab sharing ================= -->
+  <section class="pitch reveal">
+    <span class="kicker">What's next</span>
+    <blockquote>Ek akeli cab ka poora kiraya, jab teen seats khaali reh jaati hain. <span class="hi">Ab is baar nahi.</span></blockquote>
+    <p class="sub">We're opening cab sharing to the same verified network, so your route splits the fare instead of splitting your patience. Six quick questions, and we'll start matching your commute.</p>
+    <div class="arrow-cue">
+      Two minutes, then you're in
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 4v16M6 14l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+  </section>
+
+  <!-- ================= FORM ================= -->
+  <form id="intentForm" novalidate>
+
+    <!-- Q1 -->
+    <section class="q reveal" id="q1">
+      <div class="q-head">
+        <span class="q-index"><span class="step-badge">1</span>How do you usually travel to college?</span>
+      </div>
+      <div class="chip-grid" role="group" aria-label="Usual mode of travel" data-field="travelMode">
+        <button type="button" class="chip" data-value="Metro">Metro</button>
+        <button type="button" class="chip" data-value="Bus">Bus</button>
+        <button type="button" class="chip" data-value="Private vehicle">Private vehicle</button>
+        <button type="button" class="chip" data-value="Others">Others</button>
+      </div>
+    </section>
+
+    <!-- Q2 -->
+    <section class="q reveal" id="q2">
+      <div class="q-head">
+        <span class="q-index"><span class="step-badge">2</span>What do you usually spend on your daily commute?</span>
+      </div>
+      <div class="opt-list" role="radiogroup" aria-label="Average daily commute spend" data-field="spend">
+        <button type="button" class="opt-row" role="radio" aria-checked="false" data-value="0-50"><span class="opt-bullet"></span><span class="opt-label">Rs 0 to 50</span></button>
+        <button type="button" class="opt-row" role="radio" aria-checked="false" data-value="51-100"><span class="opt-bullet"></span><span class="opt-label">Rs 51 to 100</span></button>
+        <button type="button" class="opt-row" role="radio" aria-checked="false" data-value="101-150"><span class="opt-bullet"></span><span class="opt-label">Rs 101 to 150</span></button>
+        <button type="button" class="opt-row" role="radio" aria-checked="false" data-value="150+"><span class="opt-bullet"></span><span class="opt-label">Rs 150 and above</span></button>
+      </div>
+    </section>
+
+    <!-- Q3 -->
+    <section class="q reveal" id="q3">
+      <div class="q-head">
+        <span class="q-index"><span class="step-badge">3</span>How long does that commute usually take?</span>
+      </div>
+      <div class="opt-list" role="radiogroup" aria-label="Average commute time" data-field="commuteTime">
+        <button type="button" class="opt-row" role="radio" aria-checked="false" data-value="<30"><span class="opt-bullet"></span><span class="opt-label">Under 30 minutes</span></button>
+        <button type="button" class="opt-row" role="radio" aria-checked="false" data-value="30-60"><span class="opt-bullet"></span><span class="opt-label">30 to 60 minutes</span></button>
+        <button type="button" class="opt-row" role="radio" aria-checked="false" data-value="60-90"><span class="opt-bullet"></span><span class="opt-label">1 to 1.5 hours</span></button>
+        <button type="button" class="opt-row" role="radio" aria-checked="false" data-value="90+"><span class="opt-bullet"></span><span class="opt-label">Over 1.5 hours</span></button>
+      </div>
+    </section>
+
+    <!-- Q4 -->
+    <section class="q reveal" id="q4">
+      <div class="q-head">
+        <span class="q-index"><span class="step-badge">4</span>Where do you usually start from?</span>
+        <p class="q-hint">Your locality is enough. This is what we match your route against.</p>
+      </div>
+      <div class="field">
+        <div class="input-wrap">
+          <input type="text" id="startArea" name="startArea" placeholder="e.g. Rohini, Lajpat Nagar, Dwarka Sector 12" autocomplete="address-level2">
+        </div>
+        <span class="err-msg">Tell us roughly where you're starting from.</span>
+      </div>
+    </section>
+
+    <!-- Q5 -->
+    <section class="q reveal" id="q5">
+      <div class="q-head">
+        <span class="q-index"><span class="step-badge">5</span>Same budget, less time in a shared cab. In?</span>
+      </div>
+      <div class="chip-grid" role="group" aria-label="Preference for cab sharing" data-field="wouldPrefer">
+        <button type="button" class="chip" data-value="Yes">Yes</button>
+        <button type="button" class="chip" data-value="Maybe">Maybe</button>
+        <button type="button" class="chip" data-value="No">No</button>
+      </div>
+    </section>
+
+    <!-- Q6 -->
+    <section class="q reveal" id="q6">
+      <div class="q-head">
+        <span class="q-index"><span class="step-badge">6</span>How does the daily commute usually leave you feeling?</span>
+      </div>
+      <div class="mood-grid" role="radiogroup" aria-label="Commute effort" data-field="effort">
+        <button type="button" class="mood-card" role="radio" aria-checked="false" data-value="Relaxed">
+          <svg width="30" height="30" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="12.5" stroke="currentColor" stroke-width="1.6"/><path d="M11 14.5c.5-1 1.2-1.5 1.5-1.5s1 .5 1.5 1.5M19 14.5c.5-1 1.2-1.5 1.5-1.5s1 .5 1.5 1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M10.5 19c1.8 2 3.6 3 5.5 3s3.7-1 5.5-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <span class="mood-label">Relaxed</span>
+        </button>
+        <button type="button" class="mood-card" role="radio" aria-checked="false" data-value="Manageable">
+          <svg width="30" height="30" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="12.5" stroke="currentColor" stroke-width="1.6"/><path d="M11 14.5c.5-1 1.2-1.5 1.5-1.5s1 .5 1.5 1.5M19 14.5c.5-1 1.2-1.5 1.5-1.5s1 .5 1.5 1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M11 20.5h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <span class="mood-label">Manageable</span>
+        </button>
+        <button type="button" class="mood-card" role="radio" aria-checked="false" data-value="Tired">
+          <svg width="30" height="30" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="12.5" stroke="currentColor" stroke-width="1.6"/><path d="M10.5 15.3l3-1.3M21.5 15.3l-3-1.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M11 21c1.8-2 3.6-3 5.5-3s3.7 1 5.5 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <span class="mood-label">Tired out</span>
+        </button>
+        <button type="button" class="mood-card" role="radio" aria-checked="false" data-value="Unmanageable">
+          <svg width="30" height="30" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="12.5" stroke="currentColor" stroke-width="1.6"/><path d="M10.5 15.6l3-1.6M21.5 15.6l-3-1.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M11 22c1.8-2.4 3.6-3.4 5.5-3.4s3.7 1 5.5 3.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M14 26.5c1 .8 2.2-.8 1-1.3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          <span class="mood-label">Draining</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Q7 -->
+    <section class="q reveal" id="q7">
+      <div class="q-head">
+        <span class="q-index"><span class="step-badge">7</span>Last bit, so we know who to match you with</span>
+      </div>
+      <div class="field-grid">
+        <div class="field">
+          <label for="fullName">Full name</label>
+          <div class="input-wrap"><input type="text" id="fullName" name="fullName" placeholder="As on your college ID" autocomplete="name" required></div>
+          <span class="err-msg">We need your name to build your rider profile.</span>
+        </div>
+        <div class="field">
+          <label for="college">College</label>
+          <div class="input-wrap"><input type="text" id="college" name="college" placeholder="Full college name" autocomplete="organization" required></div>
+          <span class="err-msg">This is how we match you within your own campus.</span>
+        </div>
+        <div class="field">
+          <label for="phone">Phone number</label>
+          <div class="input-wrap">
+            <span class="prefix">+91</span>
+            <input type="tel" id="phone" name="phone" class="with-prefix" placeholder="98765 43210" inputmode="numeric" autocomplete="tel" required>
+          </div>
+          <span class="err-msg">Enter a valid 10-digit mobile number.</span>
+        </div>
+        <div class="field">
+          <label for="email">Gmail address</label>
+          <div class="input-wrap"><input type="email" id="email" name="email" placeholder="you@gmail.com" autocomplete="email" required></div>
+          <span class="err-msg">Enter a valid Gmail address.</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- SUBMIT -->
+    <section class="submit-sec">
+      <button type="submit" class="cta-btn">
+        Find my route
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <p class="privacy-note">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+        Your details stay within Picapool's verified network. No spam, no reselling, just route matches from people at your own college.
+      </p>
+    </section>
+  </form>
+
+  <!-- ================= SUCCESS STATE ================= -->
+  <section class="success" id="successPanel" aria-live="polite">
+    <div class="success-ring">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M4 12l5 5L20 6" stroke="var(--brand)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <h2>You're on the route list.</h2>
+    <p>We're matching riders on your college and locality this week. Expect a message on WhatsApp the moment your route fills up.</p>
+    <div class="ticket">
+      <div class="ticket-row"><span>Rider</span><span id="ticketName">—</span></div>
+      <div class="ticket-row"><span>Starting from</span><span id="ticketArea">—</span></div>
+      <div class="ticket-row"><span>College</span><span id="ticketCollege">—</span></div>
+    </div>
+  </section>
+
+  <footer class="legal">
+    Picapool is a verified peer network for students. By continuing you agree that the information above may be used to match your ride.
+  </footer>
+</main>
+
+<script>
+(function(){
+  "use strict";
+
+  var state = {};
+  var form = document.getElementById('intentForm');
+  var progressFill = document.getElementById('progressFill');
+
+  // total trackable inputs: 6 grouped questions + 4 text fields = 10
+  var TOTAL_TRACKED = 10;
+
+  function updateProgress(){
+    var filled = 0;
+    ['travelMode','spend','commuteTime','wouldPrefer','effort'].forEach(function(k){ if(state[k]) filled++; });
+    ['startArea','fullName','college','phone','email'].forEach(function(id){
+      var el = document.getElementById(id);
+      if(el && el.value.trim()) filled++;
+    });
+    var pct = Math.max(6, Math.min(100, Math.round((filled / TOTAL_TRACKED) * 100)));
+    progressFill.style.width = pct + '%';
+  }
+
+  // ---- chip groups (single-select) ----
+  document.querySelectorAll('[data-field]').forEach(function(group){
+    var field = group.getAttribute('data-field');
+    var isChip = group.classList.contains('chip-grid');
+    var selector = isChip ? '.chip' : (group.classList.contains('mood-grid') ? '.mood-card' : '.opt-row');
+    group.querySelectorAll(selector).forEach(function(btn){
+      btn.addEventListener('click', function(){
+        group.querySelectorAll(selector).forEach(function(b){
+          b.setAttribute('aria-pressed', 'false');
+          if(b.hasAttribute('aria-checked')) b.setAttribute('aria-checked','false');
+        });
+        btn.setAttribute('aria-pressed','true');
+        if(btn.hasAttribute('aria-checked')) btn.setAttribute('aria-checked','true');
+        state[field] = btn.getAttribute('data-value');
+        updateProgress();
+      });
+    });
+  });
+
+  ['startArea','fullName','college','phone','email'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.addEventListener('input', updateProgress);
+  });
+
+  // ---- reveal on scroll ----
+  if('IntersectionObserver' in window){
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){ e.target.classList.add('is-in'); io.unobserve(e.target); }
+      });
+    }, { threshold:0.15 });
+    document.querySelectorAll('.reveal').forEach(function(el){ io.observe(el); });
+  } else {
+    document.querySelectorAll('.reveal').forEach(function(el){ el.classList.add('is-in'); });
+  }
+
+  // ---- validation + submit ----
+  function setError(fieldEl, hasError){
+    fieldEl.classList.toggle('has-error', hasError);
+  }
+
+  function validate(){
+    var ok = true;
+
+    var name = document.getElementById('fullName');
+    var nameField = name.closest('.field');
+    if(!name.value.trim()){ setError(nameField, true); ok = false; } else { setError(nameField, false); }
+
+    var college = document.getElementById('college');
+    var collegeField = college.closest('.field');
+    if(!college.value.trim()){ setError(collegeField, true); ok = false; } else { setError(collegeField, false); }
+
+    var phone = document.getElementById('phone');
+    var phoneField = phone.closest('.field');
+    var digits = phone.value.replace(/\D/g,'');
+    if(digits.length !== 10){ setError(phoneField, true); ok = false; } else { setError(phoneField, false); }
+
+    var email = document.getElementById('email');
+    var emailField = email.closest('.field');
+    var emailOk = /^[^\s@]+@gmail\.com$/i.test(email.value.trim());
+    if(!emailOk){ setError(emailField, true); ok = false; } else { setError(emailField, false); }
+
+    var area = document.getElementById('startArea');
+    var areaField = area.closest('.field');
+    if(!area.value.trim()){ setError(areaField, true); ok = false; } else { setError(areaField, false); }
+
+    return ok;
+  }
+
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    if(!validate()){
+      var firstError = form.querySelector('.has-error');
+      if(firstError){ firstError.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+      return;
+    }
+
+    document.getElementById('ticketName').textContent = document.getElementById('fullName').value.trim();
+    document.getElementById('ticketArea').textContent = document.getElementById('startArea').value.trim();
+    document.getElementById('ticketCollege').textContent = document.getElementById('college').value.trim();
+
+    form.style.display = 'none';
+    document.getElementById('successPanel').classList.add('is-visible');
+    progressFill.style.width = '100%';
+    document.getElementById('successPanel').scrollIntoView({ behavior:'smooth', block:'start' });
+  });
+
+  updateProgress();
+})();
+</script>
