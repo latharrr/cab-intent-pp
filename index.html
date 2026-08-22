@@ -11,7 +11,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 
 <style>
-  /* ============ TOKENS — Picapool, single committed light theme (matches app) ============ */
+  /* ============ TOKENS - Picapool, single committed light theme (matches app) ============ */
   :root{
     --brand:#F03506;
     --brand-light:#FF7537;
@@ -82,7 +82,7 @@
 
   :focus-visible{ outline:2px solid var(--brand); outline-offset:2px; border-radius:6px; }
 
-  /* ============ SHELL — the page reads as one continuous "device card" ============ */
+  /* ============ SHELL - the page reads as one continuous "device card" ============ */
   .shell{
     width:100%;
     max-width:488px;
@@ -229,7 +229,7 @@
   }
   .q-hint{ font-size:13px; color:var(--text-secondary); margin-top:5px; line-height:1.5; }
 
-  /* chip select (single/multi row) — matches extracted 'Filters' chip */
+  /* chip select (single/multi row) - matches extracted 'Filters' chip */
   .chip-grid{ display:flex; flex-wrap:wrap; gap:8px; }
   .chip{
     appearance:none; border:1px solid transparent; cursor:pointer;
@@ -248,7 +248,7 @@
   .chip svg{ flex:none; opacity:0.85; }
   .chip[aria-pressed="true"] svg{ opacity:1; }
 
-  /* option row (radio-style) — matches extracted bullet-category rows */
+  /* option row (radio-style) - matches extracted bullet-category rows */
   .opt-list{ display:flex; flex-direction:column; gap:8px; }
   .opt-row{
     appearance:none; width:100%; text-align:left; cursor:pointer;
@@ -278,7 +278,7 @@
   .opt-row[aria-pressed="true"] .opt-label{ color:var(--brand); font-weight:600; }
   .opt-meta{ margin-left:auto; font-family:var(--font-mono); font-size:12px; color:var(--text-muted); }
 
-  /* text field — matches extracted input component */
+  /* text field - matches extracted input component */
   .field{ display:flex; flex-direction:column; gap:7px; }
   .field label{ font-size:12.5px; font-weight:600; color:var(--text-secondary); letter-spacing:0.01em; }
   .field .input-wrap{ position:relative; }
@@ -452,8 +452,8 @@
   <!-- ================= TRANSITION : the pain, the pivot to cab sharing ================= -->
   <section class="pitch reveal">
     <span class="kicker">💸 What's next</span>
-    <blockquote>₹270 ki cab akele li, aur 3 seats khaali reh gayi — same route pe itna extra kyun de rahe ho? <span class="hi">Ab is baar nahi.</span></blockquote>
-    <p class="sub">PicaPool se same route walo ke saath cab share karo — metro ki bheed bhi nahi, akele cab ka poora kharcha bhi nahi, verified riders ke saath. Bas form bharo, apna route match karwao.</p>
+    <blockquote>₹270 ki cab akele li, aur 3 seats khaali reh gayi - same route pe itna extra kyun de rahe ho? <span class="hi">Ab is baar nahi.</span></blockquote>
+    <p class="sub">PicaPool se same route walo ke saath cab share karo - metro ki bheed bhi nahi, akele cab ka poora kharcha bhi nahi, verified riders ke saath. Bas form bharo, apna route match karwao.</p>
     <div class="arrow-cue">
       Two minutes, then you're in
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 4v16M6 14l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -532,7 +532,7 @@
     <section class="q reveal" id="q4">
       <div class="q-head">
         <span class="q-index"><span class="step-badge">4</span>Which metro station is closest to where you start from?</span>
-        <p class="q-hint">🚇 Pick the nearest station — this is what we match your route against.</p>
+        <p class="q-hint">🚇 Pick the nearest station - this is what we match your route against.</p>
       </div>
       <div class="field">
         <div class="input-wrap">
@@ -646,9 +646,9 @@
     <h2>🎉 You're on the route list.</h2>
     <p>We're matching riders on your college and locality this week. Expect a message on WhatsApp the moment your route fills up.</p>
     <div class="ticket">
-      <div class="ticket-row"><span>Rider</span><span id="ticketName">—</span></div>
-      <div class="ticket-row"><span>Starting from</span><span id="ticketArea">—</span></div>
-      <div class="ticket-row"><span>College</span><span id="ticketCollege">—</span></div>
+      <div class="ticket-row"><span>Rider</span><span id="ticketName">-</span></div>
+      <div class="ticket-row"><span>Starting from</span><span id="ticketArea">-</span></div>
+      <div class="ticket-row"><span>College</span><span id="ticketCollege">-</span></div>
     </div>
   </section>
 
@@ -681,7 +681,7 @@
     progressFill.style.width = pct + '%';
   }
 
-  // ============ ANALYTICS — logs to a Google Sheet via Apps Script ============
+  // ============ ANALYTICS - logs to a Google Sheet via Apps Script ============
   // 1. Deploy the Apps Script in google-apps-script.gs as a Web App (see README).
   // 2. Paste the deployed /exec URL below. Until this is a real URL, tracking is a silent no-op.
   var CONFIG = {
@@ -724,7 +724,7 @@
     return { deviceType: deviceType, browser: browser, os: os };
   }
 
-  // "Trackable links" — anything after the domain's slash becomes the Source,
+  // "Trackable links" - anything after the domain's slash becomes the Source,
   // e.g. cab.picapool.tech/instagram -> source "instagram". UTM params work too.
   function getSource(){
     var path = window.location.pathname.replace(/^\/+|\/+$/g, '');
@@ -797,11 +797,21 @@
   document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'hidden') sendExit(); });
   window.addEventListener('pagehide', sendExit);
 
+  // ---- auto-advance: answering a question scrolls to the next one ----
+  var Q_ORDER = ['q1','q2','q3','q4','q5','q6','q7'];
+  function scrollToNextSection(currentId){
+    var idx = Q_ORDER.indexOf(currentId);
+    if(idx === -1 || idx === Q_ORDER.length - 1) return;
+    var next = document.getElementById(Q_ORDER[idx + 1]);
+    if(next) next.scrollIntoView({ behavior:'smooth', block:'start' });
+  }
+
   // ---- chip groups (single-select) ----
   document.querySelectorAll('[data-field]').forEach(function(group){
     var field = group.getAttribute('data-field');
     var isChip = group.classList.contains('chip-grid');
     var selector = isChip ? '.chip' : (group.classList.contains('mood-grid') ? '.mood-card' : (group.classList.contains('mode-grid') ? '.mode-card' : '.opt-row'));
+    var section = group.closest('.q');
     group.querySelectorAll(selector).forEach(function(btn){
       btn.addEventListener('click', function(){
         group.querySelectorAll(selector).forEach(function(b){
@@ -812,6 +822,7 @@
         if(btn.hasAttribute('aria-checked')) btn.setAttribute('aria-checked','true');
         state[field] = btn.getAttribute('data-value');
         updateProgress();
+        if(section) setTimeout(function(){ scrollToNextSection(section.id); }, 380);
       });
     });
   });
@@ -820,6 +831,19 @@
     var el = document.getElementById(id);
     if(el) el.addEventListener('input', updateProgress);
   });
+
+  // Q4 (metro station) is a single free-text question: advance once they've
+  // typed something and move on (Enter, or tapping/tabbing away).
+  (function(){
+    var startAreaEl = document.getElementById('startArea');
+    if(!startAreaEl) return;
+    startAreaEl.addEventListener('keydown', function(ev){
+      if(ev.key === 'Enter'){ ev.preventDefault(); startAreaEl.blur(); }
+    });
+    startAreaEl.addEventListener('blur', function(){
+      if(startAreaEl.value.trim()) setTimeout(function(){ scrollToNextSection('q4'); }, 200);
+    });
+  })();
 
   // ---- reveal on scroll ----
   if('IntersectionObserver' in window){

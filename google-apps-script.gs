@@ -1,7 +1,7 @@
 /**
  * PicaPool intent-form logger + live dashboard.
  *
- * This file does NOT run on Vercel — it runs inside a Google Sheet.
+ * This file does NOT run on Vercel - it runs inside a Google Sheet.
  * Setup (see README.md for the full walkthrough):
  *   1. Create a blank Google Sheet.
  *   2. Extensions > Apps Script, delete the placeholder code, paste this whole file.
@@ -10,13 +10,16 @@
  *   5. Copy the /exec URL it gives you into CONFIG.APPS_SCRIPT_URL in index.html.
  *
  * Re-run `setupDashboard` any time from the sheet's "PicaPool" menu to rebuild
- * the Dashboard tab (e.g. after you change the row layout below).
+ * the Dashboard and Read Me tabs (e.g. after you change the layout below).
+ * It never touches Submissions or Events - your data is never at risk.
  */
 
 var SHEET_SUBMISSIONS = 'Submissions';
 var SHEET_EVENTS = 'Events';
 var SHEET_DASHBOARD = 'Dashboard';
+var SHEET_README = 'Read Me';
 var BRAND = '#F03506';
+var BRAND_WASH = '#FFE5DA';
 
 var SUBMISSION_HEADERS = [
   'Timestamp', 'Visitor ID', 'Session ID', 'Is Returning Visitor', 'Source', 'Landing Path',
@@ -54,7 +57,10 @@ function doGet(e) {
 }
 
 function onOpen() {
-  SpreadsheetApp.getUi().addMenu('PicaPool', [{ name: 'Rebuild dashboard', functionName: 'setupDashboard' }]);
+  SpreadsheetApp.getUi()
+    .createMenu('PicaPool')
+    .addItem('Rebuild dashboard', 'setupDashboard')
+    .addToUi();
 }
 
 function getOrCreateSheet_(name, headers) {
@@ -93,9 +99,9 @@ function appendEvent(p) {
 }
 
 /**
- * Builds (or rebuilds) the Dashboard tab: headline metrics, per-trackable-link
- * funnel, drop-off-by-question, live submissions feed, and device/country
- * breakdowns — all formulas, so it stays live as new rows come in.
+ * Builds (or rebuilds) the Dashboard + Read Me tabs, and ensures Submissions
+ * and Events exist. Run this once after first pasting the script, and any
+ * time after from the sheet's "PicaPool" menu. Never touches your data rows.
  */
 function setupDashboard() {
   getOrCreateSheet_(SHEET_SUBMISSIONS, SUBMISSION_HEADERS);
@@ -119,16 +125,16 @@ function setupDashboard() {
 
   // ---- Title ----
   d.getRange('A1:H1').merge();
-  label('A1', '🚕 PicaPool — Live Dashboard', { bold: true, size: 18, bg: BRAND, color: '#FFFFFF' });
+  label('A1', '🚕 PicaPool - Live Dashboard', { bold: true, size: 18, bg: BRAND, color: '#FFFFFF' });
   d.getRange('A1:H1').setVerticalAlignment('middle');
   d.setRowHeight(1, 40);
-  label('A2', 'Recalculates automatically whenever this sheet is open. Trackable links: share cab.picapool.tech/<anything> and it shows up below as a Source.', { italic: true, color: '#6C6560' });
+  label('A2', 'Recalculates automatically whenever this sheet is open. Trackable links: share cab.picapool.tech/<anything> and it shows up below as a Source. See the "Read Me" tab for the full guide.', { italic: true, color: '#6C6560' });
   d.getRange('A2:H2').merge();
 
   // ---- Headline metrics ----
   d.getRange('A4:H4').merge();
-  label('A4', 'HEADLINE METRICS', { bold: true, bg: '#FFE5DA' });
-  var metricHeaders = ['Total Views', 'Unique Visitors', 'Total Visits (Sessions)', 'Total Submissions', 'Conversion Rate', 'Avg. Time on Page — Exits (s)', 'Avg. Time to Complete (s)', 'Approx. Drop-offs'];
+  label('A4', 'HEADLINE METRICS', { bold: true, bg: BRAND_WASH });
+  var metricHeaders = ['Total Views', 'Unique Visitors', 'Total Visits (Sessions)', 'Total Submissions', 'Conversion Rate', 'Avg. Time on Page - Exits (s)', 'Avg. Time to Complete (s)', 'Approx. Drop-offs'];
   d.getRange('A5:H5').setValues([metricHeaders]).setFontWeight('bold').setFontSize(9).setFontColor('#6C6560');
   formula('A6', '=COUNTIF(Events!B:B,"view")');
   formula('B6', '=IFERROR(COUNTA(UNIQUE(FILTER(Events!C2:C,Events!B2:B="view"))),0)');
@@ -143,10 +149,10 @@ function setupDashboard() {
 
   // ---- By trackable link ----
   d.getRange('A8:F8').merge();
-  label('A8', 'BY TRACKABLE LINK (SOURCE)', { bold: true, bg: '#FFE5DA' });
+  label('A8', 'BY TRACKABLE LINK (SOURCE)', { bold: true, bg: BRAND_WASH });
   var sourceHeaders = ['Source', 'Views', 'Submissions', 'Conversion %', 'Approx. Drop-offs', 'Avg. Question Reached at Exit (0–7)'];
   d.getRange('A9:F9').setValues([sourceHeaders]).setFontWeight('bold').setFontSize(9).setFontColor('#6C6560');
-  formula('A10', '=IFERROR(SORT(UNIQUE(FILTER(Events!F2:F,Events!F2:F<>""))),"No trackable links yet — try sharing cab.picapool.tech/instagram")');
+  formula('A10', '=IFERROR(SORT(UNIQUE(FILTER(Events!F2:F,Events!F2:F<>""))),"No trackable links yet - try sharing cab.picapool.tech/instagram")');
   formula('B10', '=ARRAYFORMULA(IF($A10:$A59="","",COUNTIFS(Events!$F$2:$F$9999,$A10:$A59,Events!$B$2:$B$9999,"view")))');
   formula('C10', '=ARRAYFORMULA(IF($A10:$A59="","",COUNTIFS(Submissions!$E$2:$E$9999,$A10:$A59)))');
   formula('D10', '=ARRAYFORMULA(IF($A10:$A59="","",IFERROR($C10:$C59/$B10:$B59,0)))');
@@ -155,27 +161,113 @@ function setupDashboard() {
   d.getRange('D10:D59').setNumberFormat('0.0%');
 
   // ---- Drop-off funnel ----
-  label('A62', 'DROP-OFF FUNNEL — where riders leave the form', { bold: true, bg: '#FFE5DA' });
   d.getRange('A62:D62').merge();
+  label('A62', 'DROP-OFF FUNNEL - where riders leave the form', { bold: true, bg: BRAND_WASH });
   formula('A63', '=IFERROR(QUERY(Events!A2:X,"select H, count(H) where B=\'exit\' group by H order by H asc label H \'Furthest Question Reached (0-7)\', count(H) \'Visitors\'"),"No drop-off data yet")');
 
   // ---- Recent submissions ----
-  label('A74', 'RECENT SUBMISSIONS (live feed)', { bold: true, bg: '#FFE5DA' });
   d.getRange('A74:F74').merge();
+  label('A74', 'RECENT SUBMISSIONS (live feed)', { bold: true, bg: BRAND_WASH });
   formula('A75', '=IFERROR(QUERY(Submissions!A2:U,"select A,G,H,E,Q order by A desc limit 15 label A \'When\', G \'Name\', H \'College\', E \'Source\', Q \'Took (s)\'"),"No submissions yet")');
 
   // ---- New vs returning, device breakdown ----
-  label('A95', 'NEW VS RETURNING VISITORS', { bold: true, bg: '#FFE5DA' });
-  label('D95', 'VISITS BY DEVICE TYPE', { bold: true, bg: '#FFE5DA' });
+  d.getRange('A95:C95').merge();
+  label('A95', 'NEW VS RETURNING VISITORS', { bold: true, bg: BRAND_WASH });
+  d.getRange('D95:F95').merge();
+  label('D95', 'VISITS BY DEVICE TYPE', { bold: true, bg: BRAND_WASH });
   formula('A96', '=IFERROR(QUERY(Events!A2:X,"select E, count(E) where B=\'view\' group by E label E \'New Visitor?\', count(E) \'Views\'"),"No data yet")');
   formula('D96', '=IFERROR(QUERY(Events!A2:X,"select O, count(O) where B=\'view\' and O is not null and O <> \'\' group by O order by count(O) desc label O \'Device\', count(O) \'Views\'"),"No data yet")');
 
-  // ---- Country breakdown (variable height — placed last) ----
-  label('A106', 'VISITS BY COUNTRY (top locations)', { bold: true, bg: '#FFE5DA' });
+  // ---- Country breakdown (variable height - placed last) ----
   d.getRange('A106:D106').merge();
+  label('A106', 'VISITS BY COUNTRY (top locations)', { bold: true, bg: BRAND_WASH });
   formula('A107', '=IFERROR(QUERY(Events!A2:X,"select W, count(W) where B=\'view\' and W is not null and W <> \'\' group by W order by count(W) desc label W \'Country\', count(W) \'Views\'"),"No location data yet")');
 
   d.setColumnWidths(1, 8, 150);
   d.setFrozenRows(2);
+
+  buildReadme_(ss);
+  cleanupDefaultSheet_(ss);
   SpreadsheetApp.flush();
+}
+
+/** Builds (or rebuilds) the "Read Me" tab - a plain-English guide to the sheet. */
+function buildReadme_(ss) {
+  var old = ss.getSheetByName(SHEET_README);
+  if (old) ss.deleteSheet(old);
+  var r = ss.insertSheet(SHEET_README, 0);
+
+  function h(a1, text, opts) {
+    var rg = r.getRange(a1);
+    rg.setValue(text);
+    if (opts && opts.bold) rg.setFontWeight('bold');
+    if (opts && opts.size) rg.setFontSize(opts.size);
+    if (opts && opts.bg) rg.setBackground(opts.bg);
+    if (opts && opts.color) rg.setFontColor(opts.color);
+    if (opts && opts.italic) rg.setFontStyle('italic');
+  }
+
+  r.getRange('A1:F1').merge();
+  h('A1', '📋 Read Me - how this sheet works', { bold: true, size: 18, bg: BRAND, color: '#FFFFFF' });
+  r.setRowHeight(1, 40);
+  r.getRange('A2:F2').merge();
+  h('A2', 'Auto-generated by the Apps Script behind the intent form. Safe to rebuild any time from the PicaPool menu above - it only touches Dashboard + this tab, never Submissions or Events.', { italic: true, color: '#6C6560' });
+
+  // Each row: [term, description]. A blank term = spacer row. A term with an
+  // empty description = a section header (spans the full width).
+  var rows = [
+    ['WHERE THE DATA COMES FROM', ''],
+    ['Nothing here is typed in by hand.', 'Every row is written automatically by the form at cab.picapool.tech the moment someone loads the page, leaves without finishing, or submits.'],
+    ['', ''],
+    ['THE FOUR TABS', ''],
+    ['Dashboard', 'Live numbers - views, unique visitors, conversion, drop-offs, per-link performance. All formulas, so it updates itself. Nothing to edit here.'],
+    ['Submissions', 'One row per completed form - every answer, plus who/where/when/how they found us.'],
+    ['Events', 'One row per page view, and one per drop-off ("exit" = left without submitting). This raw data is what the Dashboard is built from.'],
+    ['Read Me', 'This tab.'],
+    ['', ''],
+    ['TRACKABLE LINKS', ''],
+    ['Anything after the domain’s slash becomes a Source, automatically.', 'e.g. cab.picapool.tech/instagram, cab.picapool.tech/prakash, cab.picapool.tech/whatsapp-status - no per-link setup. It shows up as its own row in the Dashboard’s "By Trackable Link" table the moment someone opens it.'],
+    ['Classic ?utm_source=... links work too.', 'Logged alongside the path-based source.'],
+    ['', ''],
+    ['READING THE DROP-OFF NUMBERS', ''],
+    ['"Furthest Question Reached" (0–7)', '0 = landed on the page but hadn’t scrolled to Q1 yet. 7 = reached the final "personal details" section. Captured the moment someone leaves without submitting.'],
+    ['"Approx. Drop-offs"', 'Views minus Submissions - a simple estimate, not a guarantee every non-submitter actually engaged with the form.'],
+    ['', ''],
+    ['DATA QUALITY NOTES', ''],
+    ['IP / City / Region / Country', 'Looked up client-side via a free public geo-IP service - it’s an approximation. VPNs, mobile carriers, and campus Wi-Fi proxies can all skew it. Treat it as a rough signal, not a precise location.'],
+    ['Unique Visitors vs. Total Visits', 'A "visitor" is one device/browser (tracked via an ID saved on that device). A "visit" is one session - the same person opening the page on two different days is one visitor, two visits.'],
+    ['', ''],
+    ['MAINTENANCE', ''],
+    ['Rebuild Dashboard + Read Me', 'Sheet menu bar → PicaPool → Rebuild dashboard. Safe to run any time.'],
+    ['Change what gets tracked', 'Edit google-apps-script.gs and index.html in the GitHub repo, re-paste the .gs file into Extensions → Apps Script, then Deploy → Manage deployments → edit → new version (keeps the same URL).'],
+    ['Frontend + backend source code', 'github.com/latharrr/cab-intent-pp']
+  ];
+
+  var startRow = 4;
+  for (var i = 0; i < rows.length; i++) {
+    var rowIndex = startRow + i;
+    var term = rows[i][0];
+    var desc = rows[i][1];
+    if (!term) continue; // spacer row
+    if (!desc) {
+      r.getRange(rowIndex, 1, 1, 6).merge();
+      h('A' + rowIndex, term, { bold: true, bg: BRAND_WASH });
+    } else {
+      r.getRange(rowIndex, 1).setValue(term).setFontWeight('bold').setVerticalAlignment('top');
+      r.getRange(rowIndex, 2, 1, 5).merge();
+      r.getRange(rowIndex, 2).setValue(desc).setWrap(true).setVerticalAlignment('top');
+    }
+  }
+
+  r.setColumnWidth(1, 260);
+  r.setColumnWidths(2, 5, 140);
+  r.setFrozenRows(2);
+}
+
+/** Removes the default empty "Sheet1" tab Google adds to every new spreadsheet, if untouched. */
+function cleanupDefaultSheet_(ss) {
+  var def = ss.getSheetByName('Sheet1');
+  if (def && def.getLastRow() === 0 && def.getLastColumn() === 0 && ss.getSheets().length > 1) {
+    ss.deleteSheet(def);
+  }
 }
