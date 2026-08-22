@@ -814,6 +814,9 @@
     else if(document.visibilityState === 'visible') exitSent = false;
   });
   window.addEventListener('pagehide', sendExit);
+  // Belt-and-suspenders for browsers/webviews (older Android Chrome, some
+  // in-app browsers) that don't reliably fire pagehide/visibilitychange.
+  window.addEventListener('beforeunload', sendExit);
 
   // ---- auto-advance: answering a question scrolls to the next one ----
   var Q_ORDER = ['q1','q2','q3','q4','q5','q6','q7'];
