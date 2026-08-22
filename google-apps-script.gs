@@ -27,8 +27,8 @@ var SUBMISSION_HEADERS = [
   'Nearest Metro Station', 'Would Prefer Cab Share', 'Commute Effort', 'Time To Complete (s)',
   'Referrer', 'UTM Source', 'UTM Medium', 'UTM Campaign',
   'Device Type', 'Browser', 'OS', 'Language', 'Screen',
-  'IP Address', 'City', 'Region', 'Country', 'ISP / Org'
-]; // A..AE (31 cols)
+  'IP Address', 'City', 'Region', 'Country', 'ISP / Org', 'Status'
+]; // A..AF (32 cols) -- Status is "Complete" (finished the form) or "Partial" (answered something, left)
 
 var EVENT_HEADERS = [
   'Timestamp', 'Event Type', 'Visitor ID', 'Session ID', 'Is New Visitor', 'Source', 'Landing Path',
@@ -38,12 +38,22 @@ var EVENT_HEADERS = [
   'IP Address', 'City', 'Region', 'Country', 'ISP / Org'
 ]; // A..X (24 cols)
 
+// A "Partial" row is only written once someone has actually answered
+// something (percentFilled above the 6% do-nothing floor) -- a bare
+// bounce with zero interaction doesn't clutter Submissions.
+var PARTIAL_MIN_PERCENT = 6;
+
 function doPost(e) {
   try {
     var p = JSON.parse(e.postData.contents);
     if (p.kind === 'submission') {
-      appendSubmission(p);
-    } else if (p.kind === 'view' || p.kind === 'exit') {
+      appendSubmissionRow_(p, 'Complete');
+    } else if (p.kind === 'exit') {
+      appendEvent(p);
+      if ((p.percentFilled || 0) > PARTIAL_MIN_PERCENT) {
+        appendSubmissionRow_(p, 'Partial');
+      }
+    } else if (p.kind === 'view') {
       appendEvent(p);
     }
     return ContentService.createTextOutput(JSON.stringify({ ok: true })).setMimeType(ContentService.MimeType.JSON);
@@ -75,15 +85,56 @@ function getOrCreateSheet_(name, headers) {
   return sheet;
 }
 
-function appendSubmission(p) {
+// Ensures a Submissions sheet created before the Status column existed gets
+// it added retroactively, so old sheets migrate cleanly on the next setup run.
+// Every row written before this column existed was, by definition, a
+// completed submission -- "Partial" rows didn't exist yet -- so those rows
+// get backfilled as "Complete" rather than left blank/uncolored.
+function ensureStatusColumn_(sheet) {
+  var lastCol = sheet.getLastColumn();
+  var lastRow = sheet.getLastRow();
+  var lastHeader = lastCol > 0 ? sheet.getRange(1, lastCol).getValue() : '';
+  if (lastHeader !== 'Status') {
+    var statusCol = lastCol + 1;
+    sheet.getRange(1, statusCol).setValue('Status').setFontWeight('bold').setBackground(BRAND).setFontColor('#FFFFFF');
+    if (lastRow > 1) {
+      var backfill = [];
+      for (var i = 0; i < lastRow - 1; i++) backfill.push(['Complete']);
+      sheet.getRange(2, statusCol, backfill.length, 1).setValues(backfill);
+    }
+  }
+}
+
+// Colors whole rows by their Status: green for Complete, red for Partial.
+// Status is always the last column (AF) per SUBMISSION_HEADERS.
+function applySubmissionFormatting_(sheet) {
+  var range = sheet.getRange('A2:AF5000');
+  var completeRule = SpreadsheetApp.newConditionalFormatRule()
+    .whenFormulaSatisfied('=$AF2="Complete"')
+    .setBackground('#E3F5E9')
+    .setRanges([range])
+    .build();
+  var partialRule = SpreadsheetApp.newConditionalFormatRule()
+    .whenFormulaSatisfied('=$AF2="Partial"')
+    .setBackground('#FDE8E4')
+    .setRanges([range])
+    .build();
+  sheet.setConditionalFormatRules([completeRule, partialRule]);
+}
+
+// Writes one Submissions row -- status is 'Complete' (finished and hit
+// submit) or 'Partial' (answered at least one question, then left).
+function appendSubmissionRow_(p, status) {
   var sheet = getOrCreateSheet_(SHEET_SUBMISSIONS, SUBMISSION_HEADERS);
+  ensureStatusColumn_(sheet);
   sheet.appendRow([
     new Date(), p.visitorId || '', p.sessionId || '', p.isNewVisitor ? 'No' : 'Yes', p.source || '(direct)', p.path || '',
     p.fullName || '', p.college || '', p.phone || '', p.email || '', p.travelMode || '', p.spend || '', p.commuteTime || '',
-    p.startArea || '', p.wouldPrefer || '', p.effort || '', p.timeToCompleteSec || '',
+    p.startArea || '', p.wouldPrefer || '', p.effort || '', p.timeToCompleteSec || p.timeOnPageSec || '',
     p.referrer || '', p.utmSource || '', p.utmMedium || '', p.utmCampaign || '',
     p.deviceType || '', p.browser || '', p.os || '', p.language || '', p.screen || '',
-    p.ip || '', p.city || '', p.region || '', p.country || '', p.isp || ''
+    p.ip || '', p.city || '', p.region || '', p.country || '', p.isp || '',
+    status
   ]);
 }
 
@@ -104,7 +155,9 @@ function appendEvent(p) {
  * time after from the sheet's "PicaPool" menu. Never touches your data rows.
  */
 function setupDashboard() {
-  getOrCreateSheet_(SHEET_SUBMISSIONS, SUBMISSION_HEADERS);
+  var submissionsSheet = getOrCreateSheet_(SHEET_SUBMISSIONS, SUBMISSION_HEADERS);
+  ensureStatusColumn_(submissionsSheet);
+  applySubmissionFormatting_(submissionsSheet);
   getOrCreateSheet_(SHEET_EVENTS, EVENT_HEADERS);
 
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -139,10 +192,10 @@ function setupDashboard() {
   formula('A6', '=COUNTIF(Events!B:B,"view")');
   formula('B6', '=IFERROR(COUNTA(UNIQUE(FILTER(Events!C2:C,Events!B2:B="view"))),0)');
   formula('C6', '=IFERROR(COUNTA(UNIQUE(FILTER(Events!D2:D,Events!B2:B="view"))),0)');
-  formula('D6', '=COUNTA(Submissions!B2:B)');
+  formula('D6', '=COUNTIF(Submissions!AF2:AF,"Complete")');
   formula('E6', '=IFERROR(D6/A6,0)');
   formula('F6', '=IFERROR(ROUND(AVERAGE(FILTER(Events!J2:J,Events!B2:B="exit",Events!J2:J<>"")),1),0)');
-  formula('G6', '=IFERROR(ROUND(AVERAGE(FILTER(Submissions!Q2:Q,Submissions!Q2:Q<>"")),1),0)');
+  formula('G6', '=IFERROR(ROUND(AVERAGE(FILTER(Submissions!Q2:Q,Submissions!Q2:Q<>"",Submissions!AF2:AF="Complete")),1),0)');
   formula('H6', '=MAX(A6-D6,0)');
   d.getRange('A6:H6').setFontSize(16).setFontWeight('bold');
   d.getRange('E6').setNumberFormat('0.0%');
@@ -154,7 +207,7 @@ function setupDashboard() {
   d.getRange('A9:F9').setValues([sourceHeaders]).setFontWeight('bold').setFontSize(9).setFontColor('#6C6560');
   formula('A10', '=IFERROR(SORT(UNIQUE(FILTER(Events!F2:F,Events!F2:F<>""))),"No trackable links yet - try sharing cab.picapool.tech/instagram")');
   formula('B10', '=ARRAYFORMULA(IF($A10:$A59="","",COUNTIFS(Events!$F$2:$F$9999,$A10:$A59,Events!$B$2:$B$9999,"view")))');
-  formula('C10', '=ARRAYFORMULA(IF($A10:$A59="","",COUNTIFS(Submissions!$E$2:$E$9999,$A10:$A59)))');
+  formula('C10', '=ARRAYFORMULA(IF($A10:$A59="","",COUNTIFS(Submissions!$E$2:$E$9999,$A10:$A59,Submissions!$AF$2:$AF$9999,"Complete")))');
   formula('D10', '=ARRAYFORMULA(IF($A10:$A59="","",IFERROR($C10:$C59/$B10:$B59,0)))');
   formula('E10', '=ARRAYFORMULA(IF($A10:$A59="","",IF($B10:$B59-$C10:$C59>0,$B10:$B59-$C10:$C59,0)))');
   formula('F10', '=ARRAYFORMULA(IF($A10:$A59="","",IFERROR(AVERAGEIFS(Events!$H$2:$H$9999,Events!$F$2:$F$9999,$A10:$A59,Events!$B$2:$B$9999,"exit"),"")))');
@@ -165,10 +218,14 @@ function setupDashboard() {
   label('A62', 'DROP-OFF FUNNEL - where riders leave the form', { bold: true, bg: BRAND_WASH });
   formula('A63', '=IFERROR(QUERY(Events!A2:X,"select H, count(H) where B=\'exit\' group by H order by H asc label H \'Furthest Question Reached (0-7)\', count(H) \'Visitors\'"),"No drop-off data yet")');
 
-  // ---- Recent submissions ----
+  // ---- Recent activity (Complete + Partial, color-coded) ----
   d.getRange('A74:F74').merge();
-  label('A74', 'RECENT SUBMISSIONS (live feed)', { bold: true, bg: BRAND_WASH });
-  formula('A75', '=IFERROR(QUERY(Submissions!A2:U,"select A,G,H,E,Q order by A desc limit 15 label A \'When\', G \'Name\', H \'College\', E \'Source\', Q \'Took (s)\'"),"No submissions yet")');
+  label('A74', 'RECENT ACTIVITY (live feed) - green = completed, red = partial', { bold: true, bg: BRAND_WASH });
+  formula('A75', '=IFERROR(QUERY(Submissions!A2:AF,"select A,G,H,E,Q,AF order by A desc limit 15 label A \'When\', G \'Name\', H \'College\', E \'Source\', Q \'Took (s)\', AF \'Status\'"),"No activity yet")');
+  var feedRange = d.getRange('A75:F91');
+  var feedGreen = SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=$F75="Complete"').setBackground('#E3F5E9').setRanges([feedRange]).build();
+  var feedRed = SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=$F75="Partial"').setBackground('#FDE8E4').setRanges([feedRange]).build();
+  d.setConditionalFormatRules([feedGreen, feedRed]);
 
   // ---- New vs returning, device breakdown ----
   d.getRange('A95:C95').merge();
@@ -221,9 +278,13 @@ function buildReadme_(ss) {
     ['', ''],
     ['THE FOUR TABS', ''],
     ['Dashboard', 'Live numbers - views, unique visitors, conversion, drop-offs, per-link performance. All formulas, so it updates itself. Nothing to edit here.'],
-    ['Submissions', 'One row per completed form - every answer, plus who/where/when/how they found us.'],
+    ['Submissions', 'One row per completed form, PLUS one row for anyone who answered at least one question and then left without finishing. Every answer, plus who/where/when/how they found us.'],
     ['Events', 'One row per page view, and one per drop-off ("exit" = left without submitting). This raw data is what the Dashboard is built from.'],
     ['Read Me', 'This tab.'],
+    ['', ''],
+    ['PARTIAL vs. COMPLETE (the color coding)', ''],
+    ['Green rows, Status = "Complete"', 'They finished the form and hit submit. This is a real rider ready to be matched.'],
+    ['Red rows, Status = "Partial"', 'They answered at least one question but left before submitting. Worth a follow-up nudge (their phone/name may already be filled in if they got that far) - these are the leads most likely to convert with one WhatsApp message.'],
     ['', ''],
     ['TRACKABLE LINKS', ''],
     ['Anything after the domain’s slash becomes a Source, automatically.', 'e.g. cab.picapool.tech/instagram, cab.picapool.tech/prakash, cab.picapool.tech/whatsapp-status - no per-link setup. It shows up as its own row in the Dashboard’s "By Trackable Link" table the moment someone opens it.'],

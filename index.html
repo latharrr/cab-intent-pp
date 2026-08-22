@@ -784,15 +784,26 @@
     }catch(err){ /* analytics must never break the form */ }
   }
 
+  // Reads whatever's been filled in so far -- used by both the exit beacon
+  // (partial answers) and the final submission (complete answers).
+  function collectAnswers(){
+    function val(id){ var el = document.getElementById(id); return el ? el.value.trim() : ''; }
+    return {
+      fullName: val('fullName'), college: val('college'), phone: val('phone'), email: val('email'),
+      travelMode: state.travelMode || '', spend: state.spend || '', commuteTime: state.commuteTime || '',
+      startArea: val('startArea'), wouldPrefer: state.wouldPrefer || '', effort: state.effort || ''
+    };
+  }
+
   function sendExit(){
     if(exitSent || submitted) return;
     exitSent = true;
-    post(extend({
+    post(extend(extend({
       kind: 'exit',
       furthestQuestion: furthestQuestion,
       percentFilled: lastPercent,
       timeOnPageSec: Math.round((Date.now() - pageLoadTime) / 1000)
-    }, baseMeta()));
+    }, collectAnswers()), baseMeta()));
   }
   document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'hidden') sendExit(); });
   window.addEventListener('pagehide', sendExit);
@@ -904,29 +915,17 @@
       return;
     }
 
-    var fullName = document.getElementById('fullName').value.trim();
-    var startArea = document.getElementById('startArea').value.trim();
-    var college = document.getElementById('college').value.trim();
+    var answers = collectAnswers();
 
-    document.getElementById('ticketName').textContent = fullName;
-    document.getElementById('ticketArea').textContent = startArea;
-    document.getElementById('ticketCollege').textContent = college;
+    document.getElementById('ticketName').textContent = answers.fullName;
+    document.getElementById('ticketArea').textContent = answers.startArea;
+    document.getElementById('ticketCollege').textContent = answers.college;
 
     submitted = true;
-    post(extend({
+    post(extend(extend({
       kind: 'submission',
-      timeToCompleteSec: Math.round((Date.now() - pageLoadTime) / 1000),
-      fullName: fullName,
-      college: college,
-      phone: document.getElementById('phone').value.trim(),
-      email: document.getElementById('email').value.trim(),
-      travelMode: state.travelMode || '',
-      spend: state.spend || '',
-      commuteTime: state.commuteTime || '',
-      startArea: startArea,
-      wouldPrefer: state.wouldPrefer || '',
-      effort: state.effort || ''
-    }, baseMeta()));
+      timeToCompleteSec: Math.round((Date.now() - pageLoadTime) / 1000)
+    }, answers), baseMeta()));
 
     form.style.display = 'none';
     document.getElementById('successPanel').classList.add('is-visible');
