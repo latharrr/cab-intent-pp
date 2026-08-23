@@ -254,10 +254,17 @@ function setupDashboard() {
 /**
  * Builds (or rebuilds) the "Source Sheet" tab - one row per distinct traffic
  * source (trackable link or UTM source), with views, visitors, retention,
- * and fill-rate broken out. Genuinely unbounded: column A spills exactly as
- * many rows as there are distinct sources (via the `#` dynamic-array spill
- * reference), and every other column rides that same spill range - no
- * hardcoded cap on how many sources can show up.
+ * and fill-rate broken out.
+ *
+ * Deliberately avoids the `#` dynamic-array spill reference and MAP/LAMBDA:
+ * `#` isn't parsed correctly when a formula is set via Apps Script's
+ * setFormula (it comes back as #ERROR! even though typing the identical
+ * formula by hand in the sheet works fine) - so every column here instead
+ * uses the plain ARRAYFORMULA + bounded-range + COUNTIFS/MINIFS/MAXIFS
+ * pattern the Dashboard tab above already uses successfully. The bound
+ * (1000 source rows) isn't a real-world cap - no trackable-link setup on
+ * this site could plausibly produce more distinct sources than that - it's
+ * just how far these formulas look.
  */
 function buildSourceSheet_(ss) {
   var old = ss.getSheetByName(SHEET_SOURCE);
@@ -280,32 +287,46 @@ function buildSourceSheet_(ss) {
   s.getRange('A1:L1').setVerticalAlignment('middle');
   s.setRowHeight(1, 40);
   s.getRange('A2:L2').merge();
-  label('A2', 'One row per trackable link / UTM source - as many as actually exist, no cap. Recalculates automatically. "Returning" = a visitor from that source who had already been here before (tracked via a device-level ID).', { italic: true, color: '#6C6560' });
+  label('A2', 'One row per trackable link / UTM source - grows automatically as new ones show up. Recalculates automatically. "Returning" = a visitor from that source who had already been here before (tracked via a device-level ID).', { italic: true, color: '#6C6560' });
 
   var headers = ['Source', 'Total Views', 'Unique Visitors', 'New Visitors', 'Returning Visitors', 'Retention Rate', 'First Seen', 'Last Seen', 'Filled (Complete)', 'Partial (Started, Left)', 'Not Filled', 'Conversion Rate'];
   s.getRange('A4:L4').setValues([headers]).setFontWeight('bold').setFontSize(9).setFontColor('#6C6560').setBackground(BRAND_WASH);
 
+  var LAST = 1004; // bounded ARRAYFORMULA lookahead, not a real cap - see function comment
+  var A_RNG = '$A$5:$A$' + LAST;
+
   // Every distinct source seen in either Events or Submissions, sorted
-  // alphabetically - this single spilled column drives the row count for
-  // every column to its right.
-  formula('A5', '=IFERROR(SORT(UNIQUE(FILTER({Events!F2:F;Submissions!E2:E},{Events!F2:F;Submissions!E2:E}<>""))),"No trackable links yet - try sharing cab.picapool.tech/instagram")');
+  // alphabetically - a plain array-returning formula that spills naturally
+  // (no `#` reference involved), same as the Dashboard's per-link table.
+  formula('A5', '=IFERROR(SORT(UNIQUE(FILTER({Events!F2:F9999;Submissions!E2:E9999},{Events!F2:F9999;Submissions!E2:E9999}<>""))),"No trackable links yet - try sharing cab.picapool.tech/instagram")');
 
-  formula('B5', '=ARRAYFORMULA(COUNTIFS(Events!$F$2:$F$9999,A5#,Events!$B$2:$B$9999,"view"))');
-  formula('C5', '=MAP(A5#,LAMBDA(src,IFERROR(COUNTA(UNIQUE(FILTER(Events!$C$2:$C$9999,Events!$F$2:$F$9999=src,Events!$B$2:$B$9999="view"))),0)))');
-  formula('D5', '=MAP(A5#,LAMBDA(src,IFERROR(COUNTA(UNIQUE(FILTER(Events!$C$2:$C$9999,Events!$F$2:$F$9999=src,Events!$B$2:$B$9999="view",Events!$E$2:$E$9999="Yes"))),0)))');
-  formula('E5', '=ARRAYFORMULA(C5#-D5#)');
-  formula('F5', '=ARRAYFORMULA(IFERROR(E5#/C5#,0))');
-  formula('G5', '=MAP(A5#,LAMBDA(src,IFERROR(MIN(FILTER(Events!$A$2:$A$9999,Events!$F$2:$F$9999=src)),"")))');
-  formula('H5', '=MAP(A5#,LAMBDA(src,IFERROR(MAX(FILTER(Events!$A$2:$A$9999,Events!$F$2:$F$9999=src)),"")))');
-  formula('I5', '=ARRAYFORMULA(COUNTIFS(Submissions!$E$2:$E$9999,A5#,Submissions!$AF$2:$AF$9999,"Complete"))');
-  formula('J5', '=ARRAYFORMULA(COUNTIFS(Submissions!$E$2:$E$9999,A5#,Submissions!$AF$2:$AF$9999,"Partial"))');
-  formula('K5', '=ARRAYFORMULA(IF((B5#-I5#-J5#)<0,0,(B5#-I5#-J5#)))');
-  formula('L5', '=ARRAYFORMULA(IFERROR(I5#/B5#,0))');
+  // Hidden helper columns (N:Q): unique (source, visitorId) pairs, so a
+  // plain COUNTIF against column N/P can give a per-source *distinct*
+  // visitor count without needing MAP/LAMBDA per row.
+  s.getRange('N4').setValue('internal helper - unique (source, visitor) pairs, all views - do not edit').setFontSize(8).setFontColor('#B0A9A3');
+  s.getRange('P4').setValue('internal helper - unique (source, visitor) pairs, returning views only - do not edit').setFontSize(8).setFontColor('#B0A9A3');
+  formula('N5', '=IFERROR(UNIQUE(FILTER({Events!F2:F9999,Events!C2:C9999},Events!B2:B9999="view")),"")');
+  formula('P5', '=IFERROR(UNIQUE(FILTER({Events!F2:F9999,Events!C2:C9999},Events!B2:B9999="view",Events!E2:E9999="No")),"")');
+  var N_RNG = '$N$5:$N$9999';
+  var P_RNG = '$P$5:$P$9999';
 
-  s.getRange('F5:F5000').setNumberFormat('0.0%');
-  s.getRange('L5:L5000').setNumberFormat('0.0%');
-  s.getRange('G5:H5000').setNumberFormat('yyyy-mm-dd hh:mm');
+  formula('B5', '=ARRAYFORMULA(IF(' + A_RNG + '="","",COUNTIFS(Events!$F$2:$F$9999,' + A_RNG + ',Events!$B$2:$B$9999,"view")))');
+  formula('C5', '=ARRAYFORMULA(IF(' + A_RNG + '="","",COUNTIF(' + N_RNG + ',' + A_RNG + ')))');
+  formula('E5', '=ARRAYFORMULA(IF(' + A_RNG + '="","",COUNTIF(' + P_RNG + ',' + A_RNG + ')))');
+  formula('D5', '=ARRAYFORMULA(IF(' + A_RNG + '="","",C5:C' + LAST + '-E5:E' + LAST + '))');
+  formula('F5', '=ARRAYFORMULA(IF(' + A_RNG + '="","",IFERROR(E5:E' + LAST + '/C5:C' + LAST + ',0)))');
+  formula('G5', '=ARRAYFORMULA(IF(' + A_RNG + '="","",IFERROR(MINIFS(Events!$A$2:$A$9999,Events!$F$2:$F$9999,' + A_RNG + '),"")))');
+  formula('H5', '=ARRAYFORMULA(IF(' + A_RNG + '="","",IFERROR(MAXIFS(Events!$A$2:$A$9999,Events!$F$2:$F$9999,' + A_RNG + '),"")))');
+  formula('I5', '=ARRAYFORMULA(IF(' + A_RNG + '="","",COUNTIFS(Submissions!$E$2:$E$9999,' + A_RNG + ',Submissions!$AF$2:$AF$9999,"Complete")))');
+  formula('J5', '=ARRAYFORMULA(IF(' + A_RNG + '="","",COUNTIFS(Submissions!$E$2:$E$9999,' + A_RNG + ',Submissions!$AF$2:$AF$9999,"Partial")))');
+  formula('K5', '=ARRAYFORMULA(IF(' + A_RNG + '="","",IF((B5:B' + LAST + '-I5:I' + LAST + '-J5:J' + LAST + ')<0,0,(B5:B' + LAST + '-I5:I' + LAST + '-J5:J' + LAST + '))))');
+  formula('L5', '=ARRAYFORMULA(IF(' + A_RNG + '="","",IFERROR(I5:I' + LAST + '/B5:B' + LAST + ',0)))');
 
+  s.getRange('F5:F' + LAST).setNumberFormat('0.0%');
+  s.getRange('L5:L' + LAST).setNumberFormat('0.0%');
+  s.getRange('G5:H' + LAST).setNumberFormat('yyyy-mm-dd hh:mm');
+
+  s.hideColumns(14, 4); // N:Q - the helper columns above
   s.setColumnWidths(1, 12, 130);
   s.setFrozenRows(4);
 }
