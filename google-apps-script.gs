@@ -7,16 +7,18 @@
  *   2. Extensions > Apps Script, delete the placeholder code, paste this whole file.
  *   3. Run `setupDashboard` once from the editor toolbar (grant the permissions it asks for).
  *   4. Deploy > New deployment > type "Web app". Execute as "Me", access "Anyone".
- *   5. Copy the /exec URL it gives you into CONFIG.APPS_SCRIPT_URL in index.html.
+ *   5. Copy the /exec URL it gives you into APPS_SCRIPT_URL in api/track.js.
  *
  * Re-run `setupDashboard` any time from the sheet's "PicaPool" menu to rebuild
- * the Dashboard and Read Me tabs (e.g. after you change the layout below).
- * It never touches Submissions or Events - your data is never at risk.
+ * the Dashboard, Source Sheet, and Read Me tabs (e.g. after you change the
+ * layout below). It never touches Submissions or Events - your data is never
+ * at risk.
  */
 
 var SHEET_SUBMISSIONS = 'Submissions';
 var SHEET_EVENTS = 'Events';
 var SHEET_DASHBOARD = 'Dashboard';
+var SHEET_SOURCE = 'Source Sheet';
 var SHEET_README = 'Read Me';
 var BRAND = '#F03506';
 var BRAND_WASH = '#FFE5DA';
@@ -243,9 +245,69 @@ function setupDashboard() {
   d.setColumnWidths(1, 8, 150);
   d.setFrozenRows(2);
 
+  buildSourceSheet_(ss);
   buildReadme_(ss);
   cleanupDefaultSheet_(ss);
   SpreadsheetApp.flush();
+}
+
+/**
+ * Builds (or rebuilds) the "Source Sheet" tab - one row per distinct traffic
+ * source (trackable link or UTM source), with views, visitors, retention,
+ * and fill-rate broken out. Genuinely unbounded: column A spills exactly as
+ * many rows as there are distinct sources (via the `#` dynamic-array spill
+ * reference), and every other column rides that same spill range - no
+ * hardcoded cap on how many sources can show up.
+ */
+function buildSourceSheet_(ss) {
+  var old = ss.getSheetByName(SHEET_SOURCE);
+  if (old) ss.deleteSheet(old);
+  var s = ss.insertSheet(SHEET_SOURCE, 1);
+
+  function label(a1, text, opts) {
+    var r = s.getRange(a1);
+    r.setValue(text);
+    if (opts && opts.bold) r.setFontWeight('bold');
+    if (opts && opts.size) r.setFontSize(opts.size);
+    if (opts && opts.bg) r.setBackground(opts.bg);
+    if (opts && opts.color) r.setFontColor(opts.color);
+    if (opts && opts.italic) r.setFontStyle('italic');
+  }
+  function formula(a1, f) { s.getRange(a1).setFormula(f); }
+
+  s.getRange('A1:L1').merge();
+  label('A1', '🔗 Source Sheet - traffic broken out by source', { bold: true, size: 18, bg: BRAND, color: '#FFFFFF' });
+  s.getRange('A1:L1').setVerticalAlignment('middle');
+  s.setRowHeight(1, 40);
+  s.getRange('A2:L2').merge();
+  label('A2', 'One row per trackable link / UTM source - as many as actually exist, no cap. Recalculates automatically. "Returning" = a visitor from that source who had already been here before (tracked via a device-level ID).', { italic: true, color: '#6C6560' });
+
+  var headers = ['Source', 'Total Views', 'Unique Visitors', 'New Visitors', 'Returning Visitors', 'Retention Rate', 'First Seen', 'Last Seen', 'Filled (Complete)', 'Partial (Started, Left)', 'Not Filled', 'Conversion Rate'];
+  s.getRange('A4:L4').setValues([headers]).setFontWeight('bold').setFontSize(9).setFontColor('#6C6560').setBackground(BRAND_WASH);
+
+  // Every distinct source seen in either Events or Submissions, sorted
+  // alphabetically - this single spilled column drives the row count for
+  // every column to its right.
+  formula('A5', '=IFERROR(SORT(UNIQUE(FILTER({Events!F2:F;Submissions!E2:E},{Events!F2:F;Submissions!E2:E}<>""))),"No trackable links yet - try sharing cab.picapool.tech/instagram")');
+
+  formula('B5', '=ARRAYFORMULA(COUNTIFS(Events!$F$2:$F$9999,A5#,Events!$B$2:$B$9999,"view"))');
+  formula('C5', '=MAP(A5#,LAMBDA(src,IFERROR(COUNTA(UNIQUE(FILTER(Events!$C$2:$C$9999,Events!$F$2:$F$9999=src,Events!$B$2:$B$9999="view"))),0)))');
+  formula('D5', '=MAP(A5#,LAMBDA(src,IFERROR(COUNTA(UNIQUE(FILTER(Events!$C$2:$C$9999,Events!$F$2:$F$9999=src,Events!$B$2:$B$9999="view",Events!$E$2:$E$9999="Yes"))),0)))');
+  formula('E5', '=ARRAYFORMULA(C5#-D5#)');
+  formula('F5', '=ARRAYFORMULA(IFERROR(E5#/C5#,0))');
+  formula('G5', '=MAP(A5#,LAMBDA(src,IFERROR(MIN(FILTER(Events!$A$2:$A$9999,Events!$F$2:$F$9999=src)),"")))');
+  formula('H5', '=MAP(A5#,LAMBDA(src,IFERROR(MAX(FILTER(Events!$A$2:$A$9999,Events!$F$2:$F$9999=src)),"")))');
+  formula('I5', '=ARRAYFORMULA(COUNTIFS(Submissions!$E$2:$E$9999,A5#,Submissions!$AF$2:$AF$9999,"Complete"))');
+  formula('J5', '=ARRAYFORMULA(COUNTIFS(Submissions!$E$2:$E$9999,A5#,Submissions!$AF$2:$AF$9999,"Partial"))');
+  formula('K5', '=ARRAYFORMULA(IF((B5#-I5#-J5#)<0,0,(B5#-I5#-J5#)))');
+  formula('L5', '=ARRAYFORMULA(IFERROR(I5#/B5#,0))');
+
+  s.getRange('F5:F5000').setNumberFormat('0.0%');
+  s.getRange('L5:L5000').setNumberFormat('0.0%');
+  s.getRange('G5:H5000').setNumberFormat('yyyy-mm-dd hh:mm');
+
+  s.setColumnWidths(1, 12, 130);
+  s.setFrozenRows(4);
 }
 
 /** Builds (or rebuilds) the "Read Me" tab - a plain-English guide to the sheet. */
@@ -276,10 +338,11 @@ function buildReadme_(ss) {
     ['WHERE THE DATA COMES FROM', ''],
     ['Nothing here is typed in by hand.', 'Every row is written automatically by the form at cab.picapool.tech the moment someone loads the page, leaves without finishing, or submits.'],
     ['', ''],
-    ['THE FOUR TABS', ''],
+    ['THE FIVE TABS', ''],
     ['Dashboard', 'Live numbers - views, unique visitors, conversion, drop-offs, per-link performance. All formulas, so it updates itself. Nothing to edit here.'],
+    ['Source Sheet', 'One row per traffic source (trackable link or UTM source) - as many as actually exist, no cap. Views, unique/new/returning visitors, retention rate, first/last seen dates, and filled/partial/not-filled counts, per source.'],
     ['Submissions', 'One row per completed form, PLUS one row for anyone who answered at least one question and then left without finishing. Every answer, plus who/where/when/how they found us.'],
-    ['Events', 'One row per page view, and one per drop-off ("exit" = left without submitting). This raw data is what the Dashboard is built from.'],
+    ['Events', 'One row per page view, and one per drop-off ("exit" = left without submitting). This raw data is what the Dashboard and Source Sheet are built from.'],
     ['Read Me', 'This tab.'],
     ['', ''],
     ['PARTIAL vs. COMPLETE (the color coding)', ''],

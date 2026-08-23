@@ -72,6 +72,10 @@ domain sidesteps that.
   breakdown (views, submissions, conversion %, drop-offs, average
   drop-off point), a drop-off funnel by question, a live feed of recent
   submissions, and new-vs-returning / device / country breakdowns.
+- **Source Sheet** - one row per traffic source (trackable link or UTM
+  source), as many as actually exist - no cap. Total views, unique/new/
+  returning visitors, retention rate, first-seen/last-seen dates, and
+  filled/partial/not-filled counts, all live formulas.
 
 **Trackable links:** anything after the domain's slash is captured as a
 `Source`, no setup needed per-link. Share `cab.picapool.tech/instagram`,
