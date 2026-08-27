@@ -303,6 +303,13 @@
 
   .field-grid{ display:flex; flex-direction:column; gap:16px; }
 
+  .trust-note{
+    font-size:12.5px; line-height:1.55; color:var(--text-secondary);
+    background:var(--surface); border:1px solid var(--line);
+    border-radius:var(--r-sm); padding:11px 13px; margin:-2px 0 2px;
+  }
+  .trust-note strong{ color:var(--ink); }
+
   /* mood cards for Q6 */
   .mood-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
   .mood-card{
@@ -466,7 +473,43 @@
     <!-- Q1 -->
     <section class="q reveal" id="q1">
       <div class="q-head">
-        <span class="q-index"><span class="step-badge">1</span>How do you usually travel to college?</span>
+        <span class="q-index"><span class="step-badge">1</span>First up, so we know who to match you with</span>
+      </div>
+      <div class="field-grid">
+        <div class="field">
+          <label for="fullName">Full name</label>
+          <div class="input-wrap"><input type="text" id="fullName" name="fullName" placeholder="As on your college ID" autocomplete="name" required></div>
+          <span class="err-msg">We need your name to build your rider profile.</span>
+        </div>
+        <div class="field">
+          <label for="college">College</label>
+          <div class="input-wrap"><input type="text" id="college" name="college" list="collegeList" placeholder="Start typing your college name" autocomplete="off" required></div>
+          <span class="err-msg">This is how we match you within your own campus.</span>
+        </div>
+        <p class="trust-note">Before you enter your number - we get it, nobody wants another spam caller. <strong>No spam calls. No random WhatsApp messages. No promotional nonsense.</strong> We only need your details to verify you and help match your commute.</p>
+        <div class="field">
+          <label for="phone">Phone number</label>
+          <div class="input-wrap">
+            <span class="prefix">+91</span>
+            <input type="tel" id="phone" name="phone" class="with-prefix" placeholder="98765 43210" inputmode="numeric" autocomplete="tel" required>
+          </div>
+          <span class="err-msg">Enter a valid 10-digit mobile number.</span>
+        </div>
+        <div class="field">
+          <label for="email">Gmail address <span style="font-weight:500;color:var(--text-muted);">(optional)</span></label>
+          <div class="input-wrap"><input type="email" id="email" name="email" placeholder="you@gmail.com" autocomplete="email"></div>
+          <span class="err-msg">Enter a valid Gmail address, or leave this blank.</span>
+        </div>
+      </div>
+      <datalist id="collegeList">
+        <option value="Miranda House"><option value="Hindu College"><option value="Hansraj College"><option value="Sri Venkateswara College"><option value="Ramjas College"><option value="Kirori Mal College"><option value="St. Stephen's College"><option value="Lady Shri Ram College for Women"><option value="Shri Ram College of Commerce"><option value="Delhi College of Arts and Commerce"><option value="Deshbandhu College"><option value="Gargi College"><option value="Daulat Ram College"><option value="Kamala Nehru College"><option value="Jesus and Mary College"><option value="Indraprastha College for Women"><option value="Maitreyi College"><option value="Aryabhatta College"><option value="Bhagini Nivedita College"><option value="Bharati College"><option value="Dyal Singh College"><option value="Dyal Singh Evening College"><option value="Motilal Nehru College"><option value="Rajdhani College"><option value="Ram Lal Anand College"><option value="Satyawati College"><option value="Shaheed Bhagat Singh College"><option value="Shivaji College"><option value="Sri Aurobindo College"><option value="Swami Shraddhanand College"><option value="Zakir Husain Delhi College"><option value="PGDAV College"><option value="Deen Dayal Upadhyaya College"><option value="Vivekananda College"><option value="Bhaskaracharya College of Applied Sciences"><option value="Acharya Narendra Dev College"><option value="College of Vocational Studies"><option value="Institute of Home Economics"><option value="Lakshmibai College"><option value="Shyam Lal College"><option value="Shyama Prasad Mukherji College for Women"><option value="Sri Guru Gobind Singh College of Commerce"><option value="Sri Guru Nanak Dev Khalsa College"><option value="Sri Guru Tegh Bahadur Khalsa College"><option value="Cluster Innovation Centre, DU"><option value="Jamia Millia Islamia"><option value="Jawaharlal Nehru University"><option value="IIT Delhi"><option value="Netaji Subhas University of Technology (NSUT)"><option value="Delhi Technological University (DTU)"><option value="Indira Gandhi Delhi Technical University for Women (IGDTUW)"><option value="Guru Gobind Singh Indraprastha University (GGSIPU)"><option value="Amity University, Noida"><option value="Jamia Hamdard"><option value="Ambedkar University Delhi"><option value="Symbiosis Law School, NOIDA"><option value="Galgotias University"><option value="Sharda University"><option value="Manav Rachna University"><option value="Vivekananda Institute of Professional Studies (VIPS)"><option value="Bharati Vidyapeeth's College of Engineering"><option value="Maharaja Agrasen Institute of Technology (MAIT)"><option value="Bhagwan Parshuram Institute of Technology (BPIT)"><option value="Jagannath International Management School (JIMS)">
+      </datalist>
+    </section>
+
+    <!-- Q2 -->
+    <section class="q reveal" id="q2">
+      <div class="q-head">
+        <span class="q-index"><span class="step-badge">2</span>How do you usually travel to college?</span>
       </div>
       <div class="mode-grid" role="radiogroup" aria-label="Usual mode of travel" data-field="travelMode">
         <button type="button" class="mode-card" role="radio" aria-checked="false" data-value="Cab/Auto">
@@ -502,10 +545,10 @@
       </div>
     </section>
 
-    <!-- Q2 -->
-    <section class="q reveal" id="q2">
+    <!-- Q3 -->
+    <section class="q reveal" id="q3">
       <div class="q-head">
-        <span class="q-index"><span class="step-badge">2</span>What do you usually spend on your daily commute?</span>
+        <span class="q-index"><span class="step-badge">3</span>What do you usually spend on your daily commute?</span>
       </div>
       <div class="opt-list" role="radiogroup" aria-label="Average daily commute spend" data-field="spend">
         <button type="button" class="opt-row" role="radio" aria-checked="false" data-value="0-50"><span class="opt-bullet"></span><span class="opt-label">Rs 0 to 50</span></button>
@@ -515,10 +558,10 @@
       </div>
     </section>
 
-    <!-- Q3 -->
-    <section class="q reveal" id="q3">
+    <!-- Q4 -->
+    <section class="q reveal" id="q4">
       <div class="q-head">
-        <span class="q-index"><span class="step-badge">3</span>How long does that commute usually take?</span>
+        <span class="q-index"><span class="step-badge">4</span>How long does that commute usually take?</span>
       </div>
       <div class="opt-list" role="radiogroup" aria-label="Average commute time" data-field="commuteTime">
         <button type="button" class="opt-row" role="radio" aria-checked="false" data-value="<30"><span class="opt-bullet"></span><span class="opt-label">Under 30 minutes</span></button>
@@ -528,10 +571,10 @@
       </div>
     </section>
 
-    <!-- Q4 -->
-    <section class="q reveal" id="q4">
+    <!-- Q5 -->
+    <section class="q reveal" id="q5">
       <div class="q-head">
-        <span class="q-index"><span class="step-badge">4</span>Which metro station is closest to where you start from?</span>
+        <span class="q-index"><span class="step-badge">5</span>Which metro station is closest to where you start from?</span>
         <p class="q-hint">🚇 Pick the nearest station - this is what we match your route against.</p>
       </div>
       <div class="field">
@@ -553,10 +596,10 @@
       </datalist>
     </section>
 
-    <!-- Q5 -->
-    <section class="q reveal" id="q5">
+    <!-- Q6 -->
+    <section class="q reveal" id="q6">
       <div class="q-head">
-        <span class="q-index"><span class="step-badge">5</span>Same budget, less time in a shared cab. In?</span>
+        <span class="q-index"><span class="step-badge">6</span>Same budget, less time in a shared cab. In?</span>
       </div>
       <div class="chip-grid" role="group" aria-label="Preference for cab sharing" data-field="wouldPrefer">
         <button type="button" class="chip" data-value="Yes">Yes</button>
@@ -565,10 +608,10 @@
       </div>
     </section>
 
-    <!-- Q6 -->
-    <section class="q reveal" id="q6">
+    <!-- Q7 -->
+    <section class="q reveal" id="q7">
       <div class="q-head">
-        <span class="q-index"><span class="step-badge">6</span>How does the daily commute usually leave you feeling?</span>
+        <span class="q-index"><span class="step-badge">7</span>How does the daily commute usually leave you feeling?</span>
       </div>
       <div class="mood-grid" role="radiogroup" aria-label="Commute effort" data-field="effort">
         <button type="button" class="mood-card" role="radio" aria-checked="false" data-value="Relaxed">
@@ -588,41 +631,6 @@
           <span class="mood-label">Draining</span>
         </button>
       </div>
-    </section>
-
-    <!-- Q7 -->
-    <section class="q reveal" id="q7">
-      <div class="q-head">
-        <span class="q-index"><span class="step-badge">7</span>Last bit, so we know who to match you with</span>
-      </div>
-      <div class="field-grid">
-        <div class="field">
-          <label for="fullName">Full name</label>
-          <div class="input-wrap"><input type="text" id="fullName" name="fullName" placeholder="As on your college ID" autocomplete="name" required></div>
-          <span class="err-msg">We need your name to build your rider profile.</span>
-        </div>
-        <div class="field">
-          <label for="college">College</label>
-          <div class="input-wrap"><input type="text" id="college" name="college" list="collegeList" placeholder="Start typing your college name" autocomplete="off" required></div>
-          <span class="err-msg">This is how we match you within your own campus.</span>
-        </div>
-        <div class="field">
-          <label for="phone">Phone number</label>
-          <div class="input-wrap">
-            <span class="prefix">+91</span>
-            <input type="tel" id="phone" name="phone" class="with-prefix" placeholder="98765 43210" inputmode="numeric" autocomplete="tel" required>
-          </div>
-          <span class="err-msg">Enter a valid 10-digit mobile number.</span>
-        </div>
-        <div class="field">
-          <label for="email">Gmail address <span style="font-weight:500;color:var(--text-muted);">(optional)</span></label>
-          <div class="input-wrap"><input type="email" id="email" name="email" placeholder="you@gmail.com" autocomplete="email"></div>
-          <span class="err-msg">Enter a valid Gmail address, or leave this blank.</span>
-        </div>
-      </div>
-      <datalist id="collegeList">
-        <option value="Miranda House"><option value="Hindu College"><option value="Hansraj College"><option value="Sri Venkateswara College"><option value="Ramjas College"><option value="Kirori Mal College"><option value="St. Stephen's College"><option value="Lady Shri Ram College for Women"><option value="Shri Ram College of Commerce"><option value="Delhi College of Arts and Commerce"><option value="Deshbandhu College"><option value="Gargi College"><option value="Daulat Ram College"><option value="Kamala Nehru College"><option value="Jesus and Mary College"><option value="Indraprastha College for Women"><option value="Maitreyi College"><option value="Aryabhatta College"><option value="Bhagini Nivedita College"><option value="Bharati College"><option value="Dyal Singh College"><option value="Dyal Singh Evening College"><option value="Motilal Nehru College"><option value="Rajdhani College"><option value="Ram Lal Anand College"><option value="Satyawati College"><option value="Shaheed Bhagat Singh College"><option value="Shivaji College"><option value="Sri Aurobindo College"><option value="Swami Shraddhanand College"><option value="Zakir Husain Delhi College"><option value="PGDAV College"><option value="Deen Dayal Upadhyaya College"><option value="Vivekananda College"><option value="Bhaskaracharya College of Applied Sciences"><option value="Acharya Narendra Dev College"><option value="College of Vocational Studies"><option value="Institute of Home Economics"><option value="Lakshmibai College"><option value="Shyam Lal College"><option value="Shyama Prasad Mukherji College for Women"><option value="Sri Guru Gobind Singh College of Commerce"><option value="Sri Guru Nanak Dev Khalsa College"><option value="Sri Guru Tegh Bahadur Khalsa College"><option value="Cluster Innovation Centre, DU"><option value="Jamia Millia Islamia"><option value="Jawaharlal Nehru University"><option value="IIT Delhi"><option value="Netaji Subhas University of Technology (NSUT)"><option value="Delhi Technological University (DTU)"><option value="Indira Gandhi Delhi Technical University for Women (IGDTUW)"><option value="Guru Gobind Singh Indraprastha University (GGSIPU)"><option value="Amity University, Noida"><option value="Jamia Hamdard"><option value="Ambedkar University Delhi"><option value="Symbiosis Law School, NOIDA"><option value="Galgotias University"><option value="Sharda University"><option value="Manav Rachna University"><option value="Vivekananda Institute of Professional Studies (VIPS)"><option value="Bharati Vidyapeeth's College of Engineering"><option value="Maharaja Agrasen Institute of Technology (MAIT)"><option value="Bhagwan Parshuram Institute of Technology (BPIT)"><option value="Jagannath International Management School (JIMS)">
-      </datalist>
     </section>
 
     <!-- SUBMIT -->
@@ -865,7 +873,7 @@
       if(ev.key === 'Enter'){ ev.preventDefault(); startAreaEl.blur(); }
     });
     startAreaEl.addEventListener('blur', function(){
-      if(startAreaEl.value.trim()) setTimeout(function(){ scrollToNextSection('q4'); }, 200);
+      if(startAreaEl.value.trim()) setTimeout(function(){ scrollToNextSection('q5'); }, 200);
     });
   })();
 
