@@ -207,13 +207,21 @@ function setupDashboard() {
   label('A8', 'BY TRACKABLE LINK (SOURCE)', { bold: true, bg: BRAND_WASH });
   var sourceHeaders = ['Source', 'Views', 'Submissions', 'Conversion %', 'Approx. Drop-offs', 'Avg. Question Reached at Exit (0–7)'];
   d.getRange('A9:F9').setValues([sourceHeaders]).setFontWeight('bold').setFontSize(9).setFontColor('#6C6560');
-  formula('A10', '=IFERROR(SORT(UNIQUE(FILTER(Events!F2:F,Events!F2:F<>""))),"No trackable links yet - try sharing cab.picapool.tech/instagram")');
-  formula('B10', '=ARRAYFORMULA(IF($A10:$A59="","",COUNTIFS(Events!$F$2:$F$9999,$A10:$A59,Events!$B$2:$B$9999,"view")))');
-  formula('C10', '=ARRAYFORMULA(IF($A10:$A59="","",COUNTIFS(Submissions!$E$2:$E$9999,$A10:$A59,Submissions!$AF$2:$AF$9999,"Complete")))');
-  formula('D10', '=ARRAYFORMULA(IF($A10:$A59="","",IFERROR($C10:$C59/$B10:$B59,0)))');
-  formula('E10', '=ARRAYFORMULA(IF($A10:$A59="","",IF($B10:$B59-$C10:$C59>0,$B10:$B59-$C10:$C59,0)))');
-  formula('F10', '=ARRAYFORMULA(IF($A10:$A59="","",IFERROR(AVERAGEIFS(Events!$H$2:$H$9999,Events!$F$2:$F$9999,$A10:$A59,Events!$B$2:$B$9999,"exit"),"")))');
-  d.getRange('D10:D59').setNumberFormat('0.0%');
+  // Bounded + ranked by views (not a plain alphabetical SORT/UNIQUE): a public
+  // domain gets hit by bots probing random paths, and every distinct path
+  // becomes a "source" (see getSource() in index.html). An uncapped list can
+  // grow past row 62 (where the next section's label lives) and collide with
+  // it, which blocks the array from spilling and shows #REF! on the whole
+  // table. ARRAY_CONSTRAIN caps it at 45 rows without erroring if there are
+  // fewer, and ranking by COUNTIF frequency keeps real sources on top and
+  // pushes one-off bot noise off the bottom instead of breaking the table.
+  formula('A10', '=IFERROR(ARRAY_CONSTRAIN(SORT(UNIQUE(FILTER(Events!F2:F,Events!F2:F<>"")),COUNTIF(Events!F2:F,UNIQUE(FILTER(Events!F2:F,Events!F2:F<>""))),FALSE),45,1),"No trackable links yet - try sharing cab.picapool.tech/instagram")');
+  formula('B10', '=ARRAYFORMULA(IF($A10:$A54="","",COUNTIFS(Events!$F$2:$F$9999,$A10:$A54,Events!$B$2:$B$9999,"view")))');
+  formula('C10', '=ARRAYFORMULA(IF($A10:$A54="","",COUNTIFS(Submissions!$E$2:$E$9999,$A10:$A54,Submissions!$AF$2:$AF$9999,"Complete")))');
+  formula('D10', '=ARRAYFORMULA(IF($A10:$A54="","",IFERROR($C10:$C54/$B10:$B54,0)))');
+  formula('E10', '=ARRAYFORMULA(IF($A10:$A54="","",IF($B10:$B54-$C10:$C54>0,$B10:$B54-$C10:$C54,0)))');
+  formula('F10', '=ARRAYFORMULA(IF($A10:$A54="","",IFERROR(AVERAGEIFS(Events!$H$2:$H$9999,Events!$F$2:$F$9999,$A10:$A54,Events!$B$2:$B$9999,"exit"),"")))');
+  d.getRange('D10:D54').setNumberFormat('0.0%');
 
   // ---- Drop-off funnel ----
   d.getRange('A62:D62').merge();
